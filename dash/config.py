@@ -80,7 +80,7 @@ def _parse_connections(spec):
     return out
 
 
-VT_CONNECTIONS = _parse_connections(_env("VT_CONNECTIONS", "X2=Linnéplatsen:25@Billdal:4"))
+VT_CONNECTIONS = _parse_connections(_env("VT_CONNECTIONS", "X2=Linnéplatsen:25@Balltorp:4"))
 VT_CHANGE_MINUTES = int(_env("VT_CHANGE_MINUTES", "1"))
 
 # "alla" mode: transport modes to include (tram,bus,ferry,train). Empty = all.

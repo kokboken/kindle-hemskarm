@@ -81,7 +81,7 @@ def _parse_time(s):
 
 
 def _departures(gid):
-    params = {"timeSpanInMinutes": 120, "limit": 200}
+    params = {"timeSpanInMinutes": 120, "limit": 200, "maxDeparturesPerLineAndDirection": 5}
     try:
         return _get(f"/stop-areas/{gid}/departures", params)
     except requests.HTTPError as e:
