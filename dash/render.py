@@ -130,9 +130,16 @@ def _draw_departures(d, y, deps, err, now, max_y, mode):
             big = font(42 if work else 38, True) if i == 0 else font(38 if work else 34)
             lines = []
             if g.connections:  # connecting line on top, in italics: "25 23:19"
-                conn = g.connections[i] if i < len(g.connections) else None
-                c_txt = f"{g.via_line} {conn:%H:%M}" if conn else f"{g.via_line} –"
-                lines.append((c_txt, font(28, italic=True), MID, 32))
+                wait = g.waits[i] if i < len(g.waits) else None
+                cf = font(25, italic=True)
+                c_txt = f"vänta {wait} min" if wait is not None else f"ingen {g.via_line}"
+                for alt in (font(23, italic=True), font(21, italic=True)):  # shrink to fit its column
+                    if _w(d, c_txt, cf) <= slot_w - 12:
+                        break
+                    cf = alt
+                if _w(d, c_txt, cf) > slot_w - 12:
+                    c_txt = f"vänta {wait}" if wait is not None else "–"
+                lines.append((c_txt, cf, MID, 30))
             main_idx = len(lines)
             lines.append((label, big, BLACK if i == 0 else DARK, 44 if work else 40))
             if mins < 60:

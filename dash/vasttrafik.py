@@ -26,6 +26,8 @@ class LineDepartures:
     label: str = ""  # whose work route this is, in "jobb" mode
     via: str = ""  # e.g. "byte Linnéplatsen" when a connection is shown
     via_line: str = ""  # the connecting line, e.g. "25"
+    journeys: list = field(default_factory=list)  # serviceJourney gid per time (same trip at the transfer stop)
+    waits: list = field(default_factory=list)  # per time: minutes to wait for the connection, or None
     connections: list = field(default_factory=list)  # per time: datetime of the connecting departure or None
 
 
@@ -142,14 +144,14 @@ def fetch(mode="alla"):
         if not t:
             continue
         g = groups.setdefault((name, direction), LineDepartures(name, direction, tmode, label=label))
-        g.times.append((_parse_time(t), bool(d.get("isCancelled"))))
+        g.times.append((_parse_time(t), bool(d.get("isCancelled")), sj.get("gid")))
     out = _finish(list(groups.values()), mode)
     if mode == "jobb":
         for g in out:
             conn = config.VT_CONNECTIONS.get(g.line.lower())
             if conn:
                 try:
-                    _add_connection(g, conn, _connection_times(conn))
+                    _add_connection(g, conn, *_connection_times(conn))
                 except Exception:
                     log.exception("connection lookup failed")
     return out
@@ -159,8 +161,12 @@ def _connection_times(conn):
     """Departure times of the connecting line at the transfer stop."""
     data = _departures(_resolve_stop(conn["stop"]))
     times = []
+    passing = {}  # journey gid -> time at the transfer stop, for every trip passing it
     for d in data.get("results") or []:
         sj = d.get("serviceJourney") or {}
+        tt = d.get("estimatedOtherwisePlannedTime") or d.get("estimatedTime") or d.get("plannedTime")
+        if sj.get("gid") and tt:
+            passing[sj["gid"]] = _parse_time(tt)
         line = sj.get("line") or {}
         name = line.get("shortName") or line.get("designation") or line.get("name") or ""
         if name.lower() != conn["line"].lower() or d.get("isCancelled"):
@@ -170,16 +176,26 @@ def _connection_times(conn):
         t = d.get("estimatedOtherwisePlannedTime") or d.get("estimatedTime") or d.get("plannedTime")
         if t:
             times.append(_parse_time(t))
-    return sorted(times)
+    return sorted(times), passing
 
 
-def _add_connection(g, conn, conn_times):
-    """For each departure in g, find the first connecting departure we can catch."""
+def _add_connection(g, conn, conn_times, passing=None):
+    """For each departure in g: the first connecting departure we can catch, and the wait for it.
+
+    Arrival at the transfer stop is the same trip's time there (from Västtrafik) when known,
+    otherwise departure + the configured ride minutes."""
+    passing = passing or {}
     stop = conn["stop"].split(",")[0]
-    g.via = f"byte {stop}"
+    g.via = f"byte {conn['line']} {stop}"
     g.via_line = conn["line"]
-    need = timedelta(minutes=conn["ride"] + config.VT_CHANGE_MINUTES)
-    g.connections = [next((c for c in conn_times if c >= t + need), None) for t, _ in g.times]
+    change = timedelta(minutes=config.VT_CHANGE_MINUTES)
+    g.connections, g.waits = [], []
+    for i, (t, _) in enumerate(g.times):
+        jid = g.journeys[i] if i < len(g.journeys) else None
+        arrive = passing.get(jid) or t + timedelta(minutes=conn["ride"])
+        c = next((c for c in conn_times if c >= arrive + change), None)
+        g.connections.append(c)
+        g.waits.append(int((c - arrive).total_seconds() // 60) if c else None)
 
 
 def _finish(out, mode):
@@ -187,6 +203,8 @@ def _finish(out, mode):
     for g in out:
         g.times.sort(key=lambda x: x[0])
         g.times = g.times[:n]
+        g.journeys = [x[2] if len(x) > 2 else None for x in g.times]
+        g.times = [(x[0], x[1]) for x in g.times]
     if mode == "jobb":
         order = [w[0].lower() for w in config.VT_WORK]
         out.sort(key=lambda g: (order.index(g.line.lower()) if g.line.lower() in order else 99, g.direction))
