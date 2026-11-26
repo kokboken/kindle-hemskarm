@@ -20,10 +20,30 @@ def set_value(text, key, value):
     return text + f"\n{key}={value}\n"
 
 
+def _split_auth_key(value):
+    """An 'autentiseringsnyckel' is base64("client_id:client_secret")."""
+    import base64
+    import binascii
+    v = value.removeprefix("Basic ").strip()
+    try:
+        decoded = base64.b64decode(v + "=" * (-len(v) % 4), validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        return value, ""
+    if ":" in decoded:
+        cid, secret = decoded.split(":", 1)
+        if cid and secret:
+            return cid, secret
+    return value, ""
+
+
 def main():
     print("Hittas på developer.vasttrafik.se under din applikation.")
-    cid = getpass.getpass("Klistra in Client ID (syns inte) och tryck Enter: ").strip()
-    secret = getpass.getpass("Klistra in Client secret (syns inte) och tryck Enter: ").strip()
+    print("Har du en 'Autentiseringsnyckel' räcker den – klistra in den först.")
+    first = getpass.getpass("Klistra in Autentiseringsnyckel eller Client ID (syns inte) och tryck Enter: ").strip()
+    cid, secret = _split_auth_key(first)
+    if not secret:
+        cid = first
+        secret = getpass.getpass("Klistra in Client secret (syns inte) och tryck Enter: ").strip()
     if not cid or not secret:
         sys.exit("Något var tomt – avbryter.")
 
