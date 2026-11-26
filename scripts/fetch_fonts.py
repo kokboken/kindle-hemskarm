@@ -3,7 +3,7 @@ import os
 import urllib.request
 
 BASE = "https://github.com/notofonts/notofonts.github.io/raw/main/fonts/NotoSans/hinted/ttf/"
-FILES = ["NotoSans-Regular.ttf", "NotoSans-Bold.ttf"]
+FILES = ["NotoSans-Regular.ttf", "NotoSans-Bold.ttf", "NotoSans-Italic.ttf"]
 
 out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fonts")
 os.makedirs(out, exist_ok=True)

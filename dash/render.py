@@ -29,12 +29,15 @@ FONT_CANDIDATES = {
     True: [os.path.join(HERE, "fonts", "NotoSans-Bold.ttf"),
            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
            "C:/Windows/Fonts/segoeuib.ttf"],
+    "italic": [os.path.join(HERE, "fonts", "NotoSans-Italic.ttf"),
+               "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
+               "C:/Windows/Fonts/segoeuii.ttf"],
 }
 
 
 @lru_cache(maxsize=64)
-def font(size, bold=False):
-    for path in FONT_CANDIDATES[bold]:
+def font(size, bold=False, italic=False):
+    for path in FONT_CANDIDATES["italic" if italic else bold]:
         if os.path.exists(path):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default(size)
@@ -125,19 +128,21 @@ def _draw_departures(d, y, deps, err, now, max_y, mode):
                 label = t.strftime("%H:%M")
             right = config.WIDTH - M - (n_times - 1 - i) * slot_w
             big = font(42 if work else 38, True) if i == 0 else font(38 if work else 34)
-            lines = [(label, big, BLACK if i == 0 else DARK, 44 if work else 40)]
-            if mins < 60:
-                lines.append((t.strftime("%H:%M"), font(28 if work else 26), MID, 32 if work else 30))
-            if g.connections:
+            lines = []
+            if g.connections:  # connecting line on top, in italics: "25 23:19"
                 conn = g.connections[i] if i < len(g.connections) else None
                 c_txt = f"{g.via_line} {conn:%H:%M}" if conn else f"{g.via_line} –"
-                lines.append((c_txt, font(28), MID, 32))
+                lines.append((c_txt, font(28, italic=True), MID, 32))
+            main_idx = len(lines)
+            lines.append((label, big, BLACK if i == 0 else DARK, 44 if work else 40))
+            if mins < 60:
+                lines.append((t.strftime("%H:%M"), font(28 if work else 26), MID, 32 if work else 30))
             ly = cy - sum(h for *_, h in lines) / 2
             for n, (txt, f, fill, h) in enumerate(lines):
                 tcy = ly + h / 2
                 lw = _w(d, txt, f)
                 d.text((right - lw, tcy), txt, font=f, fill=fill, anchor="lm")
-                if cancelled and n == 0:
+                if cancelled and n == main_idx:
                     d.line([(right - lw - 4, tcy), (right + 4, tcy)], fill=BLACK, width=4)
                 ly += h
         y += row_h
