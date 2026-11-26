@@ -3,3 +3,4 @@ __pycache__/
 .env
 fonts/
 preview*.png
+kindle/homedash/nyckel.sh

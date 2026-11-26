@@ -1,6 +1,10 @@
-# Under test hemma: datorns adress i ert wifi. Byt till molnadressen (med ?key=...) senare.
-# Fyll i adressen till din tjänst, inklusive ?key=...
-DASH_URL="http://192.168.68.54:8000/dash.png"
+# Tjänsten på Render. Nyckeln (DASH_KEY) ligger i nyckel.sh, som inte finns i git.
+DASH_BASE="https://home-dash-b3n6.onrender.com"
+DASH_KEY=""
+[ -f "$(dirname "$0")/nyckel.sh" ] && . "$(dirname "$0")/nyckel.sh"
+DASH_URL="$DASH_BASE/dash.png?key=$DASH_KEY"
+# Test mot datorn hemma i stället:
+# DASH_URL="http://192.168.68.54:8000/dash.png"
 
 # Sekunder mellan uppdateringar dagtid (06-24) och nattetid (00-06)
 DAY_REFRESH=180
