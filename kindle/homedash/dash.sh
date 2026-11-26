@@ -130,6 +130,17 @@ set_light() {  # $1 = 0-24, tomt = rör inte
   fi
 }
 
+WARMTH_NOW=""
+set_warmth() {  # $1 = 0-24, tomt = rör inte
+  [ -z "$1" ] || [ "$1" = "$WARMTH_NOW" ] && return
+  if lipc-set-prop com.lab126.powerd currentAmberLevel "$1" 2>/dev/null; then
+    log "varme $1"
+  else
+    log "kunde inte satta varme $1"
+  fi
+  WARMTH_NOW="$1"
+}
+
 # Sekunder kvar till strax efter nästa minutskifte, så klockan på skärmen stämmer.
 until_next_minute() { s=$(date +%S); s=${s#0}; echo $((62 - s)); }
 
@@ -140,9 +151,6 @@ sleep 3
 lipc-set-prop com.lab126.cmd wirelessEnable 1
 sleep 5
 rm -rf "$LOCK" "$TAPF"
-if [ -n "$WARMTH" ]; then
-  lipc-set-prop com.lab126.powerd currentAmberLevel "$WARMTH" 2>/dev/null && log "varme $WARMTH" || log "kunde inte satta varme $WARMTH"
-fi
 
 if [ "$TAP_TO_TOGGLE" = "1" ]; then
   watch_touch &
@@ -155,6 +163,13 @@ while true; do
   if [ $((n % FULL_REFRESH_EVERY)) -eq 1 ]; then refresh full; else refresh; fi
   hour=$(current_hour)
   if is_night "$hour"; then wait=$NIGHT_REFRESH; set_light "$LIGHT_NIGHT"
-  else wait=$DAY_REFRESH; set_light "$LIGHT_DAY"; fi
+  else
+    wait=$DAY_REFRESH; set_light "$LIGHT_DAY"
+    if [ -n "$EVENING_START" ] && [ "$hour" -ge "$EVENING_START" ]; then
+      set_warmth "$WARMTH_EVENING"
+    else
+      set_warmth "$WARMTH_DAY"
+    fi
+  fi
   if [ "$wait" -le 60 ]; then sleep "$(until_next_minute)"; else sleep "$wait"; fi
 done

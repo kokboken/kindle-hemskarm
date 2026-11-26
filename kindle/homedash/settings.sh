@@ -18,8 +18,11 @@ NIGHT_REFRESH=60
 # Skärmbelysning 0-24 (0 = släckt). Lämna tomt för att inte röra ljuset.
 LIGHT_DAY=12
 LIGHT_NIGHT=0
-# Värme (gult ljus) 0-24 på Paperwhite 5. Lämna tomt för att inte ändra.
-WARMTH=""
+# Värme (gult ljus) 0-24 på Paperwhite 5. Kväll = från EVENING_START till natten.
+# Lämna tomt för att inte ändra.
+EVENING_START=19
+WARMTH_DAY=0
+WARMTH_EVENING=18
 
 # Hur ofta skärmen blinkar svart för att rensa spökbilder (var N:e uppdatering)
 FULL_REFRESH_EVERY=15
