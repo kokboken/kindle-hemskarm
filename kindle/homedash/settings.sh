@@ -2,6 +2,7 @@
 DASH_BASE="https://home-dash-b3n6.onrender.com"
 DASH_KEY=""
 [ -f "$(dirname "$0")/nyckel.sh" ] && . "$(dirname "$0")/nyckel.sh"
+DASH_KEY="$(printf %s "$DASH_KEY" | tr -d '\r\n ')"  # tål Windows-radbrytningar
 DASH_URL="$DASH_BASE/dash.png?key=$DASH_KEY"
 # Test mot datorn hemma i stället:
 # DASH_URL="http://192.168.68.54:8000/dash.png"
