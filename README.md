@@ -111,3 +111,8 @@ Se `.env.example`. Vanligast:
 | `VT_MODES` | "Alla avgångar": t.ex. `tram` för bara spårvagn. Tomt = allt |
 | `VT_HIDE_DIRECTIONS` | Dölj riktningar i "Alla avgångar" |
 | `KEEP_NOTE_TITLE` | Namnet på listan i Keep |
+
+## Att göra
+
+- [ ] Kopiera nya `kindle/homedash` till Kindlen (ljus 12 dag, släckt 23–06, gult från 19) och kontrollera att ljus och värme ändras.
+- [ ] "Snabbast till Brunnsparken / Drottningtorget" i jobbvyn via Västtrafiks reseplanerare (2 förslag per mål, ingen promenad).
