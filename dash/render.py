@@ -77,7 +77,7 @@ def _error(d, y, msg):
 
 def _draw_departures(d, y, deps, err, now, max_y, mode):
     work = mode == "jobb"
-    title = "Jobbresor" if work else "Alla avgångar"
+    title = ("Jobbresor" if work else "Alla avgångar") + ("" if vasttrafik.configured() else " (EXEMPEL)")
     hint = "Tryck: alla avgångar" if work else "Tryck: jobbresor"
     y = _section_title(d, y, f"{title} · {config.VT_STOP_NAME}", right=hint)
     if err:
@@ -181,6 +181,8 @@ def _draw_weather(d, y, w, err):
 
 def _draw_list(d, y, data, err, max_y):
     title, items = data if data else (config.KEEP_NOTE_TITLE, [])
+    if not keep.configured():
+        title += " (EXEMPEL)"
     y = _section_title(d, y, title, right=f"{len(items)} saker" if items else None)
     if err:
         return _error(d, y, err)
