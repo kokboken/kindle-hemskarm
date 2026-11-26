@@ -1,0 +1,6 @@
+flask>=3.0
+gunicorn>=22.0
+pillow>=10.1
+requests>=2.31
+gkeepapi>=0.16
+tzdata

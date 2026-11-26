@@ -1,0 +1,31 @@
+# Render.com blueprint: New → Blueprint → välj GitHub-repot.
+services:
+  - type: web
+    name: home-dash
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt && python scripts/fetch_fonts.py
+    startCommand: gunicorn app:app --workers 1 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DASH_KEY
+        generateValue: true
+      - key: VT_CLIENT_ID
+        sync: false
+      - key: VT_CLIENT_SECRET
+        sync: false
+      - key: VT_STOP_NAME
+        value: Järntorget
+      - key: VT_WORK
+        value: "X2@Billdal:Victor,1@Östra:Lovisa"
+      - key: DEFAULT_MODE
+        value: jobb
+      - key: KEEP_EMAIL
+        sync: false
+      - key: KEEP_MASTER_TOKEN
+        sync: false
+      - key: KEEP_NOTE_TITLE
+        value: "Att köpa"
