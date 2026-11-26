@@ -9,6 +9,7 @@ import hmac
 import logging
 import threading
 import time
+from datetime import datetime
 from urllib.parse import quote
 
 from flask import Flask, Response, abort, redirect, request
@@ -51,7 +52,8 @@ def _png_response(mode=None):
             hit = (render_png(mode), time.time(), minute)
             _cache[mode] = hit
     return Response(hit[0], mimetype="image/png",
-                    headers={"Cache-Control": "no-store", "X-Dash-Mode": mode})
+                    headers={"Cache-Control": "no-store", "X-Dash-Mode": mode,
+                             "X-Dash-Hour": datetime.now(config.TZ).strftime("%H")})
 
 
 @app.get("/dash.png")

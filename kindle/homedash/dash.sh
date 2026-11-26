@@ -104,6 +104,32 @@ watch_touch() {
   done
 }
 
+# Svensk timme från servern (Kindlens egen klocka går ofta på UTC), annars Kindlens.
+current_hour() {
+  h=$(tr -d '
+' < /tmp/hd_headers 2>/dev/null | awk -F': ' 'tolower($1) == "x-dash-hour" { print $2 }')
+  [ -z "$h" ] && h=$(date +%H)
+  h=${h#0}; echo "${h:-0}"
+}
+
+is_night() {  # $1 = timme
+  if [ "$NIGHT_START" -gt "$NIGHT_END" ]; then
+    [ "$1" -ge "$NIGHT_START" ] || [ "$1" -lt "$NIGHT_END" ]
+  else
+    [ "$1" -ge "$NIGHT_START" ] && [ "$1" -lt "$NIGHT_END" ]
+  fi
+}
+
+LIGHT_NOW=""
+set_light() {  # $1 = 0-24, tomt = rör inte
+  [ -z "$1" ] || [ "$1" = "$LIGHT_NOW" ] && return
+  if lipc-set-prop com.lab126.powerd flIntensity "$1" 2>/dev/null; then
+    LIGHT_NOW="$1"; log "ljus $1"
+  else
+    log "kunde inte satta ljus $1"; LIGHT_NOW="$1"
+  fi
+}
+
 # Sekunder kvar till strax efter nästa minutskifte, så klockan på skärmen stämmer.
 until_next_minute() { s=$(date +%S); s=${s#0}; echo $((62 - s)); }
 
@@ -114,6 +140,9 @@ sleep 3
 lipc-set-prop com.lab126.cmd wirelessEnable 1
 sleep 5
 rm -rf "$LOCK" "$TAPF"
+if [ -n "$WARMTH" ]; then
+  lipc-set-prop com.lab126.powerd currentAmberLevel "$WARMTH" 2>/dev/null && log "varme $WARMTH" || log "kunde inte satta varme $WARMTH"
+fi
 
 if [ "$TAP_TO_TOGGLE" = "1" ]; then
   watch_touch &
@@ -122,9 +151,10 @@ fi
 
 n=0
 while true; do
-  hour=$(date +%H); hour=${hour#0}
-  if [ "${hour:-0}" -lt 6 ]; then wait=$NIGHT_REFRESH; else wait=$DAY_REFRESH; fi
   n=$((n + 1))
   if [ $((n % FULL_REFRESH_EVERY)) -eq 1 ]; then refresh full; else refresh; fi
+  hour=$(current_hour)
+  if is_night "$hour"; then wait=$NIGHT_REFRESH; set_light "$LIGHT_NIGHT"
+  else wait=$DAY_REFRESH; set_light "$LIGHT_DAY"; fi
   if [ "$wait" -le 60 ]; then sleep "$(until_next_minute)"; else sleep "$wait"; fi
 done
