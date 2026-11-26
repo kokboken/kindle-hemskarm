@@ -116,3 +116,7 @@ Se `.env.example`. Vanligast:
 
 - [ ] Kopiera nya `kindle/homedash` till Kindlen (ljus 12 dag, släckt 23–06, gult från 19) och kontrollera att ljus och värme ändras.
 - [ ] "Snabbast till Brunnsparken / Drottningtorget" i jobbvyn via Västtrafiks reseplanerare (2 förslag per mål, ingen promenad).
+- [ ] Lapp mellan oss: textfält på mobilsidan, visas på Kindlen tills den tas bort.
+- [ ] Dagens kalender från den delade iOS-/iCloud-kalendern (via kalenderns publika iCal-länk, `webcal://…`).
+- [ ] Regnvarning för pendlingen: "Ta paraply" om Yr lovar regn när vi går hemifrån.
+- [ ] Nattläge 23–06: bara stor klocka + morgondagens väder.
