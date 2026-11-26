@@ -25,9 +25,15 @@ show() {  # $1 = url, $2 = "full" for a flashing full refresh
 # Hitta pekskärmen om den inte är angiven i settings.sh
 find_touch() {
   [ -n "$TOUCH_DEV" ] && { echo "$TOUCH_DEV"; return; }
-  awk '/^N: Name=/ { touch = ($0 ~ /[Tt]ouch|cyttsp|pt_mt|zforce|elan|[Ww]acom/) }
-       /^H: Handlers=/ && touch { for (i = 1; i <= NF; i++) if ($i ~ /^event/) { print "/dev/input/" $i; exit } }' \
-    /proc/bus/input/devices
+  # Pekskärmen är den enhet som rapporterar positioner (B: ABS=), t.ex. "goodix-ts" på Paperwhite 5.
+  awk '
+    function pick() { if (!found && ev != "" && (named || abs)) { print "/dev/input/" ev; found = 1 } }
+    /^I:/           { ev = ""; named = 0; abs = 0 }
+    /^N: Name=/     { named = ($0 ~ /[Tt]ouch|goodix|cyttsp|pt_mt|zforce|elan|[Ww]acom|_ts"/) }
+    /^H: Handlers=/ { if (match($0, /event[0-9]+/)) ev = substr($0, RSTART, RLENGTH) }
+    /^B: ABS=/      { abs = 1 }
+    /^$/            { pick() }
+    END             { pick() }' /proc/bus/input/devices | head -n 1
 }
 
 watch_touch() {
@@ -42,8 +48,9 @@ watch_touch() {
     # Släng resten av händelserna från samma tryck
     cat "$dev" > /dev/null 2>&1 &
     drain=$!
+    log "tryck - vaxlar lage"
     show "$TOGGLE_URL" full
-    sleep 1
+    sleep 2
     kill "$drain" 2>/dev/null
   done
 }
