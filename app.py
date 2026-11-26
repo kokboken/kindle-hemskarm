@@ -21,7 +21,7 @@ app = Flask(__name__)
 
 MODES = {"jobb": "Jobbresor", "alla": "Alla avgångar"}
 _state = {"mode": config.DEFAULT_MODE if config.DEFAULT_MODE in MODES else "jobb"}
-_cache = {"png": None, "at": 0.0, "mode": None}
+_cache = {}  # mode -> (png, rendered_at, minute)
 _lock = threading.Lock()
 CACHE_SECONDS = 45
 
@@ -39,24 +39,26 @@ def _key_qs():
 def _set_mode(mode):
     with _lock:
         _state["mode"] = mode
-        _cache["png"] = None
 
 
-def _png_response():
+def _png_response(mode=None):
+    """Image for `mode` (default: the current mode). Re-rendered every new minute so the clock is right."""
+    mode = mode if mode in MODES else _state["mode"]
+    minute = time.strftime("%Y%m%d%H%M")
     with _lock:
-        mode = _state["mode"]
-        if not _cache["png"] or _cache["mode"] != mode or time.time() - _cache["at"] > CACHE_SECONDS:
-            _cache["png"] = render_png(mode)
-            _cache["at"] = time.time()
-            _cache["mode"] = mode
-        png = _cache["png"]
-    return Response(png, mimetype="image/png", headers={"Cache-Control": "no-store"})
+        hit = _cache.get(mode)
+        if not hit or hit[2] != minute or time.time() - hit[1] > CACHE_SECONDS:
+            hit = (render_png(mode), time.time(), minute)
+            _cache[mode] = hit
+    return Response(hit[0], mimetype="image/png",
+                    headers={"Cache-Control": "no-store", "X-Dash-Mode": mode})
 
 
 @app.get("/dash.png")
 def dash_png():
+    """?mode=jobb|alla fetches that mode without changing which one is current."""
     _check_key()
-    return _png_response()
+    return _png_response(request.args.get("mode"))
 
 
 @app.get("/toggle.png")
@@ -64,6 +66,16 @@ def toggle_png():
     _check_key()
     _set_mode("alla" if _state["mode"] == "jobb" else "jobb")
     return _png_response()
+
+
+@app.get("/mode.txt")
+def mode_txt():
+    """Kindle tells the server which mode it switched to (instant tap)."""
+    _check_key()
+    mode = request.args.get("mode", "")
+    if mode in MODES:
+        _set_mode(mode)
+    return Response(_state["mode"], mimetype="text/plain")
 
 
 @app.get("/mode/<mode>")

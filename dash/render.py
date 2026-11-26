@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 BLACK, DARK, MID, LIGHT, WHITE = 0, 60, 120, 200, 255
 M = 64  # page margin
-DEP_ROW_H = 68
+DEP_ROW_H = 84
 WEATHER_H = 70 + 62 + 3 * 42 + 18 + 120 + 16  # title + text block + hourly strip + gap
 LIST_MIN_H = 70 + 5 * 62  # title + at least 5 rows (10 items in two columns)
 
@@ -87,12 +87,17 @@ def _draw_departures(d, y, deps, err, now, max_y, mode):
         return y + 70
 
     n_times = config.VT_WORK_TIMES if work else config.VT_TIMES_PER_ROW
-    row_h = 104 if work else DEP_ROW_H
     slot_w = 140 if n_times > 3 else 150
     times_w = slot_w * n_times
     badge_w, badge_h = 96, 54
     f_badge, f_dir = font(40, True), font(40)
     for g in deps:
+        if g.connections:
+            row_h = 136
+        elif work:
+            row_h = 108
+        else:
+            row_h = DEP_ROW_H
         if y + row_h > max_y:
             break
         cy = y + row_h // 2
@@ -109,7 +114,7 @@ def _draw_departures(d, y, deps, err, now, max_y, mode):
             d.text((dir_x, cy + 26), _fit(d, sub, font(30), dir_max), font=font(30), fill=MID, anchor="lm")
         else:
             d.text((dir_x, cy), _fit(d, g.direction, f_dir, dir_max), font=f_dir, fill=BLACK, anchor="lm")
-        # Times, right aligned in fixed slots
+        # Times, right aligned in fixed slots: "5 min" / "22:34" / ("25 22:45")
         for i, (t, cancelled) in enumerate(g.times):
             mins = int((t - now).total_seconds() // 60)
             if mins <= 0:
@@ -118,19 +123,23 @@ def _draw_departures(d, y, deps, err, now, max_y, mode):
                 label = f"{mins} min"
             else:
                 label = t.strftime("%H:%M")
-            f = font(42, True) if i == 0 else font(38)
             right = config.WIDTH - M - (n_times - 1 - i) * slot_w
-            ty = cy
-            conn = g.connections[i] if i < len(g.connections) else None
+            big = font(42 if work else 38, True) if i == 0 else font(38 if work else 34)
+            lines = [(label, big, BLACK if i == 0 else DARK, 44 if work else 40)]
+            if mins < 60:
+                lines.append((t.strftime("%H:%M"), font(28 if work else 26), MID, 32 if work else 30))
             if g.connections:
-                ty = cy - 16
+                conn = g.connections[i] if i < len(g.connections) else None
                 c_txt = f"{g.via_line} {conn:%H:%M}" if conn else f"{g.via_line} –"
-                cf = font(28)
-                d.text((right - _w(d, c_txt, cf), cy + 28), c_txt, font=cf, fill=MID, anchor="lm")
-            lw = _w(d, label, f)
-            d.text((right - lw, ty), label, font=f, fill=BLACK if i == 0 else DARK, anchor="lm")
-            if cancelled:
-                d.line([(right - lw - 4, ty), (right + 4, ty)], fill=BLACK, width=4)
+                lines.append((c_txt, font(28), MID, 32))
+            ly = cy - sum(h for *_, h in lines) / 2
+            for n, (txt, f, fill, h) in enumerate(lines):
+                tcy = ly + h / 2
+                lw = _w(d, txt, f)
+                d.text((right - lw, tcy), txt, font=f, fill=fill, anchor="lm")
+                if cancelled and n == 0:
+                    d.line([(right - lw - 4, tcy), (right + 4, tcy)], fill=BLACK, width=4)
+                ly += h
         y += row_h
         d.line([(M, y), (config.WIDTH - M, y)], fill=LIGHT, width=1)
     return y + 10
@@ -218,15 +227,20 @@ def render_png(mode="alla"):
     img = Image.new("L", (config.WIDTH, config.HEIGHT), WHITE)
     d = ImageDraw.Draw(img)
 
-    # Header
+    # Header: date left, big clock right with "updated" under it
     date = f"{WEEKDAYS[now.weekday()]} {now.day} {MONTHS[now.month - 1]}"
-    d.text((M, 44), date, font=font(66, True), fill=BLACK)
-    upd = f"Uppdaterad {now:%H:%M}"
-    d.text((config.WIDTH - M - _w(d, upd, font(32)), 74), upd, font=font(32), fill=MID)
-    y = 170
+    d.text((M, 50), date, font=font(66, True), fill=BLACK)
+    clock = f"{now:%H:%M}"
+    fc = font(104, True)
+    d.text((config.WIDTH - M - _w(d, clock, fc), 8), clock, font=fc, fill=BLACK)
+    upd = f"Uppdaterad {now:%H:%M:%S}"
+    d.text((config.WIDTH - M - _w(d, upd, font(26)), 140), upd, font=font(26), fill=MID)
+    y = 190
 
     # Departures get what is left after reserving room for weather and the list.
-    dep_max_y = config.HEIGHT - 30 - WEATHER_H - LIST_MIN_H
+    n_items = len(lst[1]) if lst else 0
+    list_rows = min(5, max(1, (n_items + 1) // 2))  # two columns, at most 5 rows reserved
+    dep_max_y = config.HEIGHT - 30 - WEATHER_H - (70 + list_rows * 62)
     y = _draw_departures(d, y, deps, deps_err, now, max_y=dep_max_y, mode=mode) + 16
     y = _draw_weather(d, y, wx, wx_err) + 16
     _draw_list(d, y, lst, lst_err, max_y=config.HEIGHT - 30)

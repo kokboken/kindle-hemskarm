@@ -80,7 +80,20 @@ def _parse_time(s):
     return datetime.fromisoformat(s.replace("Z", "+00:00")).astimezone(config.TZ)
 
 
+_dep_cache = {}  # gid -> (data, fetched_at); both modes share one fetch
+DEP_CACHE_SECONDS = 30
+
+
 def _departures(gid):
+    hit = _dep_cache.get(gid)
+    if hit and time.time() - hit[1] < DEP_CACHE_SECONDS:
+        return hit[0]
+    data = _fetch_departures(gid)
+    _dep_cache[gid] = (data, time.time())
+    return data
+
+
+def _fetch_departures(gid):
     params = {"timeSpanInMinutes": 120, "limit": 200, "maxDeparturesPerLineAndDirection": 5}
     try:
         return _get(f"/stop-areas/{gid}/departures", params)
