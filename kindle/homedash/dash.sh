@@ -32,7 +32,10 @@ find_touch() {
 
 watch_touch() {
   dev="$(find_touch)"
-  [ -z "$dev" ] && { log "hittade ingen pekskarm"; return; }
+  if [ -z "$dev" ]; then
+    log "hittade ingen pekskarm bland: $(grep '^N: Name=' /proc/bus/input/devices | tr '\n' ' ')"
+    return
+  fi
   log "lyssnar pa $dev"
   while true; do
     dd if="$dev" bs=16 count=1 > /dev/null 2>&1   # väntar tills någon rör skärmen
