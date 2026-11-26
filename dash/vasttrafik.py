@@ -138,6 +138,8 @@ def fetch(mode="alla"):
         else:
             if config.VT_MODES and tmode not in config.VT_MODES:
                 continue
+            if config.VT_LINES and name.lower() not in config.VT_LINES:
+                continue
             if any(h in direction.lower() for h in config.VT_HIDE_DIRECTIONS):
                 continue
         t = d.get("estimatedOtherwisePlannedTime") or d.get("estimatedTime") or d.get("plannedTime")

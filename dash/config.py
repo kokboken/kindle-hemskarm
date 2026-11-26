@@ -85,6 +85,8 @@ VT_CHANGE_MINUTES = int(_env("VT_CHANGE_MINUTES", "1"))
 
 # "alla" mode: transport modes to include (tram,bus,ferry,train). Empty = all.
 VT_MODES = [m.strip().lower() for m in _env("VT_MODES").split(",") if m.strip()]
+# "alla" mode: only these lines (both directions). Empty = every line.
+VT_LINES = [x.strip().lower() for x in _env("VT_LINES", "1,3,6,9,11,X2").split(",") if x.strip()]
 VT_HIDE_DIRECTIONS = [x.strip().lower() for x in _env("VT_HIDE_DIRECTIONS").split(",") if x.strip()]
 VT_TIMES_PER_ROW = int(_env("VT_TIMES_PER_ROW", "3"))
 
