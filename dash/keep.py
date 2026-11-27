@@ -66,11 +66,20 @@ def fetch():
 NOTE_TITLE = "Lapp"
 
 
+def _note_text(n):
+    if hasattr(n, "unchecked"):  # a list: the lines not ticked off yet
+        return chr(10).join(i.text.strip() for i in n.unchecked if i.text.strip())
+    return (n.text or "").strip()
+
+
 def _note(keep):
-    for n in keep.all():
-        if not n.trashed and (n.title or "").strip().lower() == NOTE_TITLE.lower():
-            return n
-    return None
+    """The note/list titled "Lapp" – yours shared with the dashboard account, or one made from the phone page.
+    With several, the one that has text and was changed last wins."""
+    found = [n for n in keep.all()
+             if not n.trashed and not n.archived and (n.title or "").strip().lower() == NOTE_TITLE.lower()]
+    if not found:
+        return None
+    return max(found, key=lambda n: (bool(_note_text(n)), n.timestamps.updated))
 
 
 def get_note():
@@ -84,7 +93,7 @@ def get_note():
             _state["keep"] = None
             raise
         n = _note(keep)
-        return (n.text or "").strip() if n and not n.archived else ""
+        return _note_text(n) if n else ""
 
 
 def set_note(text):
@@ -96,9 +105,14 @@ def set_note(text):
         keep = _client()
         n = _note(keep)
         if n is None and text:
-            n = keep.createNote(NOTE_TITLE, text)
+            keep.createNote(NOTE_TITLE, text)
+        elif n is not None and hasattr(n, "unchecked"):  # a list: tick off the old lines, add the new ones
+            for item in n.unchecked:
+                item.checked = True
+            for line in text.splitlines():
+                if line.strip():
+                    n.add(line.strip(), False)
         elif n is not None:
             n.text = text
-            n.archived = False
         keep.sync()
         _state["last_sync"] = time.time()

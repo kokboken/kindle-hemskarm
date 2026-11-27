@@ -43,6 +43,17 @@ def font(size, bold=False, italic=False):
     return ImageFont.load_default(size)
 
 
+def clean(text):
+    """Drop emoji and other symbols the Kindle font can't draw (they would show as boxes)."""
+    out = []
+    for c in text or "":
+        o = ord(c)
+        if o in (0xFE0F, 0xFE0E, 0x200D) or 0x2190 <= o <= 0x2BFF or 0x1F000 <= o <= 0x1FAFF or 0xE000 <= o <= 0xF8FF:
+            continue
+        out.append(c)
+    return " ".join("".join(out).split())
+
+
 def _w(draw, text, f):
     return draw.textlength(text, font=f)
 
@@ -227,7 +238,7 @@ def _draw_list(d, y, data, err, max_y):
         x = M + col * col_w
         yy = y + row * row_h
         d.rectangle([x, yy + 12, x + 34, yy + 46], outline=BLACK, width=3)
-        d.text((x + 54, yy + 29), _fit(d, text, f, col_w - 70), font=f, fill=BLACK, anchor="lm")
+        d.text((x + 54, yy + 29), _fit(d, clean(text), f, col_w - 70), font=f, fill=BLACK, anchor="lm")
     if len(shown) < len(items):
         col, row = divmod(len(shown), rows)
         d.text((M + col * col_w + 54, y + row * row_h + 29), f"+ {len(items) - len(shown)} till",
@@ -280,7 +291,7 @@ def _note_lines(d, note):
     f = font(38, True)
     max_w = config.WIDTH - 2 * M - 48
     lines = []
-    for para in note.splitlines() or [note]:
+    for para in [clean(x) for x in note.splitlines()] or [clean(note)]:
         words, cur = para.split(), ""
         for w in words:
             test = f"{cur} {w}".strip()
@@ -328,7 +339,7 @@ def _draw_calendar(d, y, events, err):
             x += 140
         d.text((x, cy), when, font=font(34, True), fill=BLACK, anchor="lm")
         tx = x + (130 if not e.all_day else 130)
-        d.text((tx, cy), _fit(d, e.title, font(34), config.WIDTH - M - tx), font=font(34), fill=BLACK, anchor="lm")
+        d.text((tx, cy), _fit(d, clean(e.title), font(34), config.WIDTH - M - tx), font=font(34), fill=BLACK, anchor="lm")
         y += CAL_ROW_H
     return y + 10
 
