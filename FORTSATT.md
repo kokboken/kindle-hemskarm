@@ -12,10 +12,9 @@ Vi fortsätter bygga vår Kindle-hemskärm. Läs först `README.md` (särskilt "
 - Skärmen 1236×1648: stor klocka, Jobbresor (X2 mot Billdal för Victor med "vänta N min" på 25:an mot Balltorp vid Linnéplatsen, räknat på samma X2-turs ankomst; 1:an mot Östra Sjukhuset för Lovisa) / Alla avgångar (bara linje 1, 3, 6, 9, 11, X2, båda håll), väder från Yr, Google Keep-listan "Att köpa" (via eget dashboard-konto).
 - Kindlen hämtar båda lägena vid varje minutskifte; tryck på skärmen (pekskärm goodix-ts, /dev/input/event1) byter läge direkt. Mobilsidan `/?key=…` kan också byta läge.
 
-**Att göra:**
-1. Kopiera nya `kindle/homedash` till Kindlen (skickar batterinivå via `lipc-get-prop com.lab126.powerd battLevel`/`isCharging` som servern ritar uppe till vänster; ljus 12 dagtid, släckt 23–06, gult ljus 18 från 19:00 via `lipc-set-prop com.lab126.powerd flIntensity` / `currentAmberLevel`). Jag kopplar in Kindlen – den syns som D: – kopiera åt mig och kontrollera sedan `homedash.log` att ljus och värme faktiskt ändras (namnet `currentAmberLevel` är inte bekräftat på PW5).
+**Att göra:** inget öppet just nu – fråga vad vi ska bygga härnäst.
 
-**Klart 2026-11-27 (ligger live på Render):** Snabbast till Brunnsparken/Drottningtorget (reseplaneraren), lapp via mobilsidan (sparas som Keep-anteckningen "Lapp"), kalenderkod, regnvarning för pendlingen 07–09 vardagar, nattläge 23–06. Layouten krymper väder → kalender → lista när skärmen blir full; jobbavgångarna får alltid plats.
+**Klart 2026-11-27 (live på Render och Kindlen):** ljus 12 dag / släckt 23–06 / gult 18 från 19 (`flIntensity`, `currentAmberLevel` bekräftade på PW5), batteri uppe till vänster, Snabbast till Brunnsparken/Drottningtorget (reseplaneraren), lapp via mobilsidan (sparas som Keep-anteckningen "Lapp"), kalenderkod, regnvarning för pendlingen 07–09 vardagar, nattläge 23–06. Layouten krymper väder → kalender → lista när skärmen blir full; jobbavgångarna får alltid plats.
 
 **Lärdomar – följ dessa:**
 - Kindle-skript måste ha LF-radbrytningar. Kontrollera med `grep -c $'\r'` och ta bort CR innan något kopieras till Kindlen (Python/git på Windows har gett CRLF).

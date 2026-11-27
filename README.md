@@ -114,7 +114,7 @@ Se `.env.example`. Vanligast:
 
 ## Att göra
 
-- [ ] Kopiera nya `kindle/homedash` till Kindlen (ljus 12 dag, släckt 23–06, gult från 19, skickar batterinivå) och kontrollera att ljus, värme och batteri fungerar.
+- [x] Kopiera nya `kindle/homedash` till Kindlen (ljus 12 dag, släckt 23–06, gult från 19, skickar batterinivå) och kontrollera att ljus, värme och batteri fungerar.
 - [x] "Snabbast till Brunnsparken / Drottningtorget" i jobbvyn (Västtrafiks reseplanerare, `FASTEST_TO`).
 - [x] Lapp: en Keep-anteckning eller -lista som heter "Lapp", delad med dashboard-kontot (listor: obockade rader visas). Kan också skrivas från mobilsidan.
 - [x] Kalender (kod klar) – lägg in `ICAL_URL` (iCloud: Kalendrar → ⓘ → Offentlig kalender) i Render → Environment.
