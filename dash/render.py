@@ -433,9 +433,13 @@ def render_png(mode="alla", now=None):
     wx, wx_err = _safe(weather.fetch)
     lst, lst_err = _safe(keep.fetch)
     fast, fast_err = _safe(journeys.fetch) if mode == "jobb" else ([], None)
-    note, _ = _safe(keep.get_note)
-    week, week_err = _safe(lambda: calendar.week(now))
+    # Today's additions (note, week calendar, rain warning) only in the work view; "Alla avgångar" stays plain.
+    work = mode == "jobb"
+    note, _ = _safe(keep.get_note) if work else ("", None)
+    week, week_err = _safe(lambda: calendar.week(now)) if work else ([], None)
     week = week or []
+    if wx and not work:
+        wx.commute_warning = ""
     per_day = config.CAL_MAX_EVENTS
 
     img = Image.new("L", (config.WIDTH, config.HEIGHT), WHITE)
