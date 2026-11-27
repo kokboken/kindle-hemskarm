@@ -13,8 +13,7 @@ Vi fortsätter bygga vår Kindle-hemskärm. Läs först `README.md` (särskilt "
 - Kindlen hämtar båda lägena vid varje minutskifte; tryck på skärmen (pekskärm goodix-ts, /dev/input/event1) byter läge direkt. Mobilsidan `/?key=…` kan också byta läge.
 
 **Att göra:**
-1. Kopiera nya `kindle/homedash` till Kindlen (ljus 12 dagtid, släckt 23–06, gult ljus 18 från 19:00 via `lipc-set-prop com.lab126.powerd flIntensity` / `currentAmberLevel`). Jag kopplar in Kindlen – den syns som D: – kopiera åt mig och kontrollera sedan `homedash.log` att ljus och värme faktiskt ändras (namnet `currentAmberLevel` är inte bekräftat på PW5).
-2. Kalendern: koden är klar, jag behöver bara lägga in `ICAL_URL` (iCloud-kalenderns offentliga länk) i Render → Environment. Kontrollera sedan att händelserna syns.
+1. Kopiera nya `kindle/homedash` till Kindlen (skickar batterinivå via `lipc-get-prop com.lab126.powerd battLevel`/`isCharging` som servern ritar uppe till vänster; ljus 12 dagtid, släckt 23–06, gult ljus 18 från 19:00 via `lipc-set-prop com.lab126.powerd flIntensity` / `currentAmberLevel`). Jag kopplar in Kindlen – den syns som D: – kopiera åt mig och kontrollera sedan `homedash.log` att ljus och värme faktiskt ändras (namnet `currentAmberLevel` är inte bekräftat på PW5).
 
 **Klart 2026-11-27 (ligger live på Render):** Snabbast till Brunnsparken/Drottningtorget (reseplaneraren), lapp via mobilsidan (sparas som Keep-anteckningen "Lapp"), kalenderkod, regnvarning för pendlingen 07–09 vardagar, nattläge 23–06. Layouten krymper väder → kalender → lista när skärmen blir full; jobbavgångarna får alltid plats.
 

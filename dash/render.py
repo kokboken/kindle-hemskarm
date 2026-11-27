@@ -317,7 +317,7 @@ def _draw_note(d, y, lines):
     return y + h
 
 
-def _render_night(now):
+def _render_night(now, battery=None):
     """Calm night screen: big clock, date, tomorrow's weather, commute warning and the note."""
     wx, wx_err = _safe(weather.fetch)
     note, _ = _safe(keep.get_note)
@@ -344,6 +344,7 @@ def _render_night(now):
         y += 100
     if note:
         y = _draw_note(d, y + 20, _note_lines(d, note))
+    _draw_battery(d, M, 20, battery)
     d.text((cx, config.HEIGHT - 60), f"Nattläge till {config.NIGHT_END:02d}:00 · uppdaterad {now:%H:%M}",
            font=font(26), fill=MID, anchor="mm")
     buf = io.BytesIO()
@@ -425,17 +426,33 @@ def _draw_week(d, y, days, err, now, per_day):
     return top + _week_height(days, None, per_day)
 
 
-def render_png(mode="alla", now=None):
+def _draw_battery(d, x, y, battery):
+    """Small battery icon + percent, e.g. [███ ] 87 %  · laddar."""
+    if not battery:
+        return
+    level, charging = battery
+    w, h = 44, 22
+    d.rectangle([x, y, x + w, y + h], outline=BLACK, width=3)
+    d.rectangle([x + w + 1, y + 6, x + w + 5, y + h - 6], fill=BLACK)
+    fill_w = int((w - 8) * level / 100)
+    if fill_w > 0:
+        d.rectangle([x + 4, y + 4, x + 4 + fill_w, y + h - 4], fill=BLACK)
+    low = level <= 15 and not charging
+    text = f"{level} %" + (" · laddar" if charging else "") + (" · ladda Kindlen!" if low else "")
+    d.text((x + w + 14, y + h / 2), text, font=font(24, low), fill=BLACK if low else MID, anchor="lm")
+
+
+def render_png(mode="alla", now=None, battery=None):
     now = now or datetime.now(config.TZ)
     if config.is_night(now.hour):
-        return _render_night(now)
+        return _render_night(now, battery)
     deps, deps_err = _safe(lambda: vasttrafik.fetch(mode))
     wx, wx_err = _safe(weather.fetch)
     lst, lst_err = _safe(keep.fetch)
     fast, fast_err = _safe(journeys.fetch) if mode == "jobb" else ([], None)
-    # Today's additions (note, week calendar, rain warning) only in the work view; "Alla avgångar" stays plain.
+    # Week calendar and rain warning only in the work view; the note shows in both.
     work = mode == "jobb"
-    note, _ = _safe(keep.get_note) if work else ("", None)
+    note, _ = _safe(keep.get_note)
     week, week_err = _safe(lambda: calendar.week(now)) if work else ([], None)
     week = week or []
     if wx and not work:
@@ -445,9 +462,10 @@ def render_png(mode="alla", now=None):
     img = Image.new("L", (config.WIDTH, config.HEIGHT), WHITE)
     d = ImageDraw.Draw(img)
 
-    # Header: date left, big clock right with "updated" under it
+    # Header: battery + date left, big clock right with "updated" under it
+    _draw_battery(d, M, 16, battery)
     date = f"{WEEKDAYS[now.weekday()]} {now.day} {MONTHS[now.month - 1]}"
-    d.text((M, 50), date, font=font(66, True), fill=BLACK)
+    d.text((M, 58), date, font=font(66, True), fill=BLACK)
     clock = f"{now:%H:%M}"
     fc = font(104, True)
     d.text((config.WIDTH - M - _w(d, clock, fc), 8), clock, font=fc, fill=BLACK)

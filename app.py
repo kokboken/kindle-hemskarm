@@ -44,14 +44,30 @@ def _set_mode(mode):
         _state["mode"] = mode
 
 
+def _note_battery():
+    """The Kindle sends ?batt=87&chg=1 with each fetch; remember it for the header."""
+    b = request.args.get("batt", "")
+    if b.isdigit() and 0 <= int(b) <= 100:
+        _state["battery"] = (int(b), request.args.get("chg") == "1", time.time())
+
+
+def _battery():
+    bat = _state.get("battery")
+    if bat and time.time() - bat[2] < 15 * 60:  # older than 15 min = the Kindle isn't reporting
+        return bat[:2]
+    return None
+
+
 def _png_response(mode=None):
     """Image for `mode` (default: the current mode). Re-rendered every new minute so the clock is right."""
+    _note_battery()
     mode = mode if mode in MODES else _state["mode"]
     minute = time.strftime("%Y%m%d%H%M")
+    battery = _battery()
     with _lock:
         hit = _cache.get(mode)
-        if not hit or hit[2] != minute or time.time() - hit[1] > CACHE_SECONDS:
-            hit = (render_png(mode), time.time(), minute)
+        if not hit or hit[2] != minute or time.time() - hit[1] > CACHE_SECONDS or hit[3] != battery:
+            hit = (render_png(mode, battery=battery), time.time(), minute, battery)
             _cache[mode] = hit
     return Response(hit[0], mimetype="image/png",
                     headers={"Cache-Control": "no-store", "X-Dash-Mode": mode,

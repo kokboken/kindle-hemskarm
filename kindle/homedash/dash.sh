@@ -19,6 +19,14 @@ lock() { i=0; until mkdir "$LOCK" 2>/dev/null; do i=$((i + 1)); [ $i -gt 10 ] &&
 unlock() { rmdir "$LOCK" 2>/dev/null; }
 other_of() { if [ "$1" = "jobb" ]; then echo alla; else echo jobb; fi; }
 
+# Batterinivå och laddning till servern, som ritar dem uppe till vänster: "&batt=87&chg=1"
+battery_qs() {
+  b=$(lipc-get-prop com.lab126.powerd battLevel 2>/dev/null)
+  [ -z "$b" ] && b=$(gasgauge-info -c 2>/dev/null | tr -dc '0-9')
+  c=$(lipc-get-prop com.lab126.powerd isCharging 2>/dev/null)
+  [ -n "$b" ] && echo "&batt=$b&chg=${c:-0}"
+}
+
 # Hämtar båda lägena. Visar det aktuella. $1 = "full" för en blinkande helskärmsuppdatering.
 refresh() {
   mode=""
@@ -27,7 +35,8 @@ refresh() {
   if [ $(( $(date +%s) - last_tap )) -lt 30 ]; then
     mode=$(cat "$MODEF" 2>/dev/null)
   fi
-  if [ -n "$mode" ]; then url="$DASH_URL&mode=$mode"; else url="$DASH_URL"; fi
+  bat=$(battery_qs)
+  if [ -n "$mode" ]; then url="$DASH_URL&mode=$mode$bat"; else url="$DASH_URL$bat"; fi
   start=$(date +%s)
 
   if ! curl -fsS -m 90 -D /tmp/hd_headers -o "$CUR.new" "$url"; then
@@ -46,7 +55,7 @@ refresh() {
   if [ "$1" = "full" ]; then eips -f -g "$CUR"; else eips -g "$CUR"; fi
   unlock
 
-  if curl -fsS -m 60 -o "$OTHER.new" "$DASH_URL&mode=$(other_of "$mode")"; then
+  if curl -fsS -m 60 -o "$OTHER.new" "$DASH_URL&mode=$(other_of "$mode")$bat"; then
     lock
     if [ "$(cat "$TAPF" 2>/dev/null || echo 0)" -ge "$start" ]; then rm -f "$OTHER.new"; else mv "$OTHER.new" "$OTHER"; fi
     unlock
