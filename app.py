@@ -161,6 +161,27 @@ def phone_page():
 </main></html>"""
 
 
+@app.get("/status")
+def status():
+    """Which version runs and which sources are set up – never the secrets themselves."""
+    _check_key()
+    import os
+    from dash import calendar, vasttrafik
+    from dash import keep as keep_mod
+    info = {
+        "version": (os.environ.get("RENDER_GIT_COMMIT") or "lokal")[:7],
+        "vasttrafik": vasttrafik.configured(),
+        "keep": keep_mod.configured(),
+        "kalender": calendar.configured(),
+        "kalender_lank_borjar_med": (config.ICAL_URL[:10] + "…") if config.ICAL_URL else "",
+    }
+    try:
+        info["kalender_handelser_denna_vecka"] = sum(len(e) for _, e in calendar.week()) if calendar.configured() else None
+    except Exception as e:
+        info["kalender_fel"] = str(e)[:200]
+    return info
+
+
 @app.get("/health")
 def health():
     return "ok"
