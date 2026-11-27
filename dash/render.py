@@ -333,8 +333,44 @@ def _draw_calendar(d, y, events, err):
     return y + 10
 
 
-def render_png(mode="alla"):
-    now = datetime.now(config.TZ)
+def _render_night(now):
+    """Calm night screen: big clock, date, tomorrow's weather, commute warning and the note."""
+    wx, wx_err = _safe(weather.fetch)
+    note, _ = _safe(keep.get_note)
+    img = Image.new("L", (config.WIDTH, config.HEIGHT), WHITE)
+    d = ImageDraw.Draw(img)
+    cx = config.WIDTH / 2
+    d.text((cx, 470), f"{now:%H:%M}", font=font(300, True), fill=BLACK, anchor="mm")
+    date = f"{WEEKDAYS[now.weekday()]} {now.day} {MONTHS[now.month - 1]}"
+    d.text((cx, 690), date, font=font(60), fill=DARK, anchor="mm")
+    y = 840
+    # Before midnight: tomorrow's weather. After midnight the new day has started: today's.
+    day = (wx.tomorrow, "Imorgon") if wx and now.hour >= 12 else ((wx.today or wx.tomorrow), "Idag") if wx else (None, "")
+    if day[0]:
+        (lo, hi, sym), label = day
+        d.text((cx, y), f"{label}: {weather.describe(sym)}", font=font(56, True), fill=BLACK, anchor="mm")
+        d.text((cx, y + 80), f"{_deg(lo)} till {_deg(hi)}", font=font(56), fill=BLACK, anchor="mm")
+        y += 190
+    elif wx_err:
+        d.text((cx, y), "Väder saknas", font=font(40), fill=MID, anchor="mm")
+        y += 100
+    if wx and wx.commute_warning:
+        d.text((cx, y), _fit(d, wx.commute_warning, font(40, True), config.WIDTH - 2 * M),
+               font=font(40, True), fill=BLACK, anchor="mm")
+        y += 100
+    if note:
+        y = _draw_note(d, y + 20, _note_lines(d, note))
+    d.text((cx, config.HEIGHT - 60), f"Nattläge till {config.NIGHT_END:02d}:00 · uppdaterad {now:%H:%M}",
+           font=font(26), fill=MID, anchor="mm")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def render_png(mode="alla", now=None):
+    now = now or datetime.now(config.TZ)
+    if config.is_night(now.hour):
+        return _render_night(now)
     deps, deps_err = _safe(lambda: vasttrafik.fetch(mode))
     wx, wx_err = _safe(weather.fetch)
     lst, lst_err = _safe(keep.fetch)

@@ -115,8 +115,8 @@ Se `.env.example`. Vanligast:
 ## Att göra
 
 - [ ] Kopiera nya `kindle/homedash` till Kindlen (ljus 12 dag, släckt 23–06, gult från 19) och kontrollera att ljus och värme ändras.
-- [ ] "Snabbast till Brunnsparken / Drottningtorget" i jobbvyn via Västtrafiks reseplanerare (2 förslag per mål, ingen promenad).
-- [ ] Lapp mellan oss: textfält på mobilsidan, visas på Kindlen tills den tas bort.
-- [ ] Dagens kalender från den delade iOS-/iCloud-kalendern (via kalenderns publika iCal-länk, `webcal://…`).
-- [ ] Regnvarning för pendlingen: "Ta paraply" om Yr lovar regn när vi går hemifrån.
-- [ ] Nattläge 23–06: bara stor klocka + morgondagens väder.
+- [x] "Snabbast till Brunnsparken / Drottningtorget" i jobbvyn (Västtrafiks reseplanerare, `FASTEST_TO`).
+- [x] Lapp mellan oss: mobilsidan → Keep-anteckningen "Lapp" i dashboard-kontot → överst på skärmen.
+- [x] Kalender (kod klar) – lägg in `ICAL_URL` (iCloud: Kalendrar → ⓘ → Offentlig kalender) i Render → Environment.
+- [x] Regnvarning för pendlingen (`COMMUTE_HOURS=7-9`, vardagar).
+- [x] Nattläge 23–06 (`NIGHT_START`/`NIGHT_END` på servern, samma timmar som Kindlens ljus).

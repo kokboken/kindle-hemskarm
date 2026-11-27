@@ -108,6 +108,18 @@ COMMUTE_HOURS = _env("COMMUTE_HOURS", "7-9")
 COMMUTE_WEEKDAYS_ONLY = _env("COMMUTE_WEEKDAYS_ONLY", "1") == "1"
 RAIN_MM = float(_env("RAIN_MM", "0.2"))
 
+# Night view (big clock + tomorrow's weather) between these hours. Same hours as the Kindle's light settings.
+NIGHT_START = int(_env("NIGHT_START", "23"))
+NIGHT_END = int(_env("NIGHT_END", "6"))
+
+
+def is_night(hour):
+    if NIGHT_START == NIGHT_END:
+        return False
+    if NIGHT_START > NIGHT_END:
+        return hour >= NIGHT_START or hour < NIGHT_END
+    return NIGHT_START <= hour < NIGHT_END
+
 # Google Keep (unofficial API via gkeepapi)
 KEEP_EMAIL = _env("KEEP_EMAIL")
 KEEP_MASTER_TOKEN = _env("KEEP_MASTER_TOKEN")

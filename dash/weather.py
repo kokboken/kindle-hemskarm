@@ -64,6 +64,7 @@ class Weather:
     today_max: float
     hours: list = field(default_factory=list)  # upcoming, every 3 h
     tomorrow: tuple = None  # (min, max, symbol)
+    today: tuple = None  # (min, max, symbol) for the rest of today – used by the night view after midnight
     commute_warning: str = ""  # e.g. "Ta paraply imorgon: regn 07–09 (1,4 mm)"
 
 
@@ -148,14 +149,16 @@ def fetch():
             hours.append(Hour(t, det["air_temperature"], (nxt.get("summary") or {}).get("symbol_code", ""),
                               (nxt.get("details") or {}).get("precipitation_amount", 0.0)))
 
-    tomorrow_date = (now.date().toordinal() + 1)
-    tm = [s for s in series if s[0].date().toordinal() == tomorrow_date]
-    tomorrow = None
-    if tm:
-        temps = [s[1]["air_temperature"] for s in tm]
-        midday = min(tm, key=lambda s: abs(s[0].hour - 12))
-        sym = ((midday[2].get("summary") or {}).get("symbol_code", ""))
-        tomorrow = (min(temps), max(temps), sym)
+    def day_summary(ordinal, not_before=None):
+        day = [s for s in series if s[0].date().toordinal() == ordinal and (not_before is None or s[0] >= not_before)]
+        if not day:
+            return None
+        temps = [s[1]["air_temperature"] for s in day]
+        midday = min(day, key=lambda s: abs(s[0].hour - 12))
+        return (min(temps), max(temps), (midday[2].get("summary") or {}).get("symbol_code", ""))
+
+    tomorrow = day_summary(now.date().toordinal() + 1)
+    today_sum = day_summary(now.date().toordinal(), not_before=t0)
 
     # Hour-by-hour precipitation (only entries that have a 1-hour forecast)
     hourly = []
@@ -176,4 +179,5 @@ def fetch():
         today_max=max(today) if today else det0["air_temperature"],
         hours=hours,
         tomorrow=tomorrow,
+        today=today_sum,
     )
