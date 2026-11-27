@@ -29,3 +29,5 @@ services:
         sync: false
       - key: KEEP_NOTE_TITLE
         value: "Att köpa"
+      - key: ICAL_URL
+        sync: false

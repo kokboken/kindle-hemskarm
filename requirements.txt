@@ -4,3 +4,5 @@ pillow>=10.1
 requests>=2.31
 gkeepapi>=0.16
 tzdata
+icalendar>=5.0
+recurring-ical-events>=2.0

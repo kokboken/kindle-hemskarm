@@ -87,6 +87,11 @@ VT_CHANGE_MINUTES = int(_env("VT_CHANGE_MINUTES", "1"))
 FASTEST_TO = [x.strip() for x in _env("FASTEST_TO", "Brunnsparken,Drottningtorget").split(",") if x.strip()]
 FASTEST_COUNT = int(_env("FASTEST_COUNT", "2"))
 
+# Shared calendar: public iCal link (iCloud: Kalendrar > (i) > Offentlig kalender). Empty = no calendar.
+ICAL_URL = _env("ICAL_URL")
+CAL_MAX_EVENTS = int(_env("CAL_MAX_EVENTS", "3"))
+CAL_TOMORROW_FROM = int(_env("CAL_TOMORROW_FROM", "18"))  # from this hour, also show tomorrow
+
 # "alla" mode: transport modes to include (tram,bus,ferry,train). Empty = all.
 VT_MODES = [m.strip().lower() for m in _env("VT_MODES").split(",") if m.strip()]
 # "alla" mode: only these lines (both directions). Empty = every line.
