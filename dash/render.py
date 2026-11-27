@@ -317,64 +317,6 @@ def _draw_note(d, y, lines):
     return y + h
 
 
-def _note_lines(d, note):
-    """Wrap the note into at most 3 lines that fit inside the box."""
-    f = font(38, True)
-    max_w = config.WIDTH - 2 * M - 48
-    lines = []
-    for para in [clean(x) for x in note.splitlines()] or [clean(note)]:
-        words, cur = para.split(), ""
-        for w in words:
-            test = f"{cur} {w}".strip()
-            if _w(d, test, f) <= max_w:
-                cur = test
-            else:
-                if cur:
-                    lines.append(cur)
-                cur = w
-        if cur:
-            lines.append(cur)
-    if len(lines) > 3:
-        lines = lines[:3]
-        lines[2] = _fit(d, lines[2] + " …", f, max_w)
-    return lines
-
-
-def _draw_note(d, y, lines):
-    h = 28 + 50 * len(lines)
-    d.rounded_rectangle([M, y, config.WIDTH - M, y + h], radius=14, outline=BLACK, width=4)
-    for i, line in enumerate(lines):
-        d.text((M + 24, y + 14 + i * 50), line, font=font(38, True), fill=BLACK)
-    return y + h
-
-
-CAL_ROW_H = 54
-
-
-def _cal_height(events, err):
-    if err:
-        return 130
-    return 70 + CAL_ROW_H * min(len(events), config.CAL_MAX_EVENTS) + 10 if events else 0
-
-
-def _draw_calendar(d, y, events, err):
-    y = _section_title(d, y, "Kalender")
-    if err:
-        return _error(d, y, err)
-    for e in events[: config.CAL_MAX_EVENTS]:
-        cy = y + CAL_ROW_H // 2
-        when = "Heldag" if e.all_day else f"{e.start:%H:%M}"
-        x = M
-        if e.tomorrow:
-            d.text((x, cy), "Imorgon", font=font(30), fill=MID, anchor="lm")
-            x += 140
-        d.text((x, cy), when, font=font(34, True), fill=BLACK, anchor="lm")
-        tx = x + (130 if not e.all_day else 130)
-        d.text((tx, cy), _fit(d, clean(e.title), font(34), config.WIDTH - M - tx), font=font(34), fill=BLACK, anchor="lm")
-        y += CAL_ROW_H
-    return y + 10
-
-
 def _render_night(now):
     """Calm night screen: big clock, date, tomorrow's weather, commute warning and the note."""
     wx, wx_err = _safe(weather.fetch)
