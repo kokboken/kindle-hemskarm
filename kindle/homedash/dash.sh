@@ -40,7 +40,7 @@ refresh() {
   start=$(date +%s)
 
   if ! curl -fsS -m 90 -D /tmp/hd_headers -o "$CUR.new" "$url"; then
-    log "kunde inte hamta $url"
+    log "kunde inte hamta ${url%%\?*}"
     eips 2 2 "Ingen kontakt - forsoker igen"
     return 1
   fi
