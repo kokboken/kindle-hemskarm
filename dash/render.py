@@ -176,7 +176,9 @@ def _draw_weather(d, y, w, err, compact=False):
     if round(w.today_min) != round(w.today_max):
         info = f"Idag {_deg(w.today_min)} till {_deg(w.today_max)}  ·  " + info
     lines = [info]
-    if w.precip_next_hour >= 0.1:
+    if w.commute_warning:
+        lines.append(("!", w.commute_warning))
+    elif w.precip_next_hour >= 0.1:
         lines.append(f"{w.precip_next_hour:.1f} mm nederbörd närmaste timmen".replace(".", ","))
     else:
         lines.append("Uppehåll närmaste timmen")
@@ -184,7 +186,10 @@ def _draw_weather(d, y, w, err, compact=False):
         lo, hi, sym = w.tomorrow
         lines.append(f"Imorgon: {weather.describe(sym)}, {_deg(lo)} till {_deg(hi)}")
     for i, line in enumerate(lines):
-        d.text((x, y + 62 + i * 42), _fit(d, line, font(32), max_w), font=font(32), fill=DARK)
+        f, fill = font(32), DARK
+        if isinstance(line, tuple):  # warning: bold black
+            line, f, fill = line[1], font(32, True), BLACK
+        d.text((x, y + 62 + i * 42), _fit(d, line, f, max_w), font=f, fill=fill)
     y += 62 + len(lines) * 42 + 18
 
     # Hourly strip (dropped when the screen is full)

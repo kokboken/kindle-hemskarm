@@ -1,6 +1,6 @@
 """Weather forecast from MET Norway (the data behind Yr). No API key needed."""
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 
@@ -64,6 +64,41 @@ class Weather:
     today_max: float
     hours: list = field(default_factory=list)  # upcoming, every 3 h
     tomorrow: tuple = None  # (min, max, symbol)
+    commute_warning: str = ""  # e.g. "Ta paraply imorgon: regn 07–09 (1,4 mm)"
+
+
+def commute_warning(hourly, now):
+    """Warn if the next commute window (today if not over, else the next weekday) gets rain or snow.
+
+    hourly: [(start datetime, precipitation mm, symbol_code)] for 1-hour steps."""
+    try:
+        a, b = (int(x) for x in config.COMMUTE_HOURS.split("-"))
+    except ValueError:
+        return ""
+    day = now.date()
+    for _ in range(2):  # today or the next day only
+        weekday_ok = not config.COMMUTE_WEEKDAYS_ONLY or day.weekday() < 5
+        end = datetime.combine(day, datetime.min.time(), config.TZ).replace(hour=b)
+        if weekday_ok and end > now:
+            break
+        day = day.fromordinal(day.toordinal() + 1)
+    else:
+        return ""
+    if config.COMMUTE_WEEKDAYS_ONLY and day.weekday() >= 5:
+        return ""
+    window = [(t, mm, sym) for t, mm, sym in hourly
+              if t.date() == day and a <= t.hour < b and t + timedelta(hours=1) > now]
+    wet = [(t, mm, sym) for t, mm, sym in window if mm >= config.RAIN_MM]
+    if not wet:
+        return ""
+    total = sum(mm for _, mm, _ in wet)
+    snow = any("snow" in sym for _, _, sym in wet)
+    sleet = any("sleet" in sym for _, _, sym in wet)
+    kind = "snö" if snow and not sleet else "snöblandat regn" if sleet else "regn"
+    when = "idag" if day == now.date() else "imorgon"
+    first, last = wet[0][0], wet[-1][0] + timedelta(hours=1)
+    gear = "Klä dig varmt" if kind == "snö" else "Ta paraply"
+    return f"{gear} {when}: {kind} {first:%H}–{last:%H} ({total:.1f} mm)".replace(".", ",")
 
 
 def _fetch_raw():
@@ -122,7 +157,17 @@ def fetch():
         sym = ((midday[2].get("summary") or {}).get("symbol_code", ""))
         tomorrow = (min(temps), max(temps), sym)
 
+    # Hour-by-hour precipitation (only entries that have a 1-hour forecast)
+    hourly = []
+    for e in data["properties"]["timeseries"]:
+        one = e["data"].get("next_1_hours")
+        if one:
+            t = datetime.fromisoformat(e["time"].replace("Z", "+00:00")).astimezone(config.TZ)
+            hourly.append((t, (one.get("details") or {}).get("precipitation_amount", 0.0),
+                           (one.get("summary") or {}).get("symbol_code", "")))
+
     return Weather(
+        commute_warning=commute_warning(hourly, now),
         temp=det0["air_temperature"],
         symbol=(nxt0.get("summary") or {}).get("symbol_code", ""),
         wind=det0.get("wind_speed", 0.0),

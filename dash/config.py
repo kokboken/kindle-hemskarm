@@ -103,6 +103,10 @@ VT_TIMES_PER_ROW = int(_env("VT_TIMES_PER_ROW", "3"))
 LAT = float(_env("LAT", "57.6997"))
 LON = float(_env("LON", "11.9527"))
 WEATHER_PLACE = _env("WEATHER_PLACE", "Göteborg")
+# Rain warning for the commute: hours "7-9" (from 07:00 to 09:00), weekdays only, from this many mm/h.
+COMMUTE_HOURS = _env("COMMUTE_HOURS", "7-9")
+COMMUTE_WEEKDAYS_ONLY = _env("COMMUTE_WEEKDAYS_ONLY", "1") == "1"
+RAIN_MM = float(_env("RAIN_MM", "0.2"))
 
 # Google Keep (unofficial API via gkeepapi)
 KEEP_EMAIL = _env("KEEP_EMAIL")
