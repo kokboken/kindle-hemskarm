@@ -7,7 +7,7 @@ from functools import lru_cache
 
 from PIL import Image, ImageDraw, ImageFont
 
-from . import config, keep, vasttrafik, weather
+from . import config, journeys, keep, vasttrafik, weather
 
 log = logging.getLogger(__name__)
 
@@ -230,11 +230,52 @@ def _draw_list(d, y, data, err, max_y):
     return y + min(rows, len(shown)) * row_h
 
 
+FASTEST_ROW_H = 84
+
+
+def _fastest_height(fast):
+    return 70 + FASTEST_ROW_H * len(fast) + 10 if fast else 0
+
+
+def _badge(d, x, cy, text, h=42, fsize=28):
+    f = font(fsize, True)
+    w = max(h + 12, int(_w(d, text, f)) + 20)
+    d.rounded_rectangle([x, cy - h // 2, x + w, cy + h // 2], radius=9, fill=BLACK)
+    d.text((x + w / 2, cy), text, font=f, fill=WHITE, anchor="mm")
+    return x + w
+
+
+def _draw_fastest(d, y, fast, err, now):
+    y = _section_title(d, y, "Snabbast till")
+    if err:
+        return _error(d, y, err)
+    name_w = 330
+    col_w = (config.WIDTH - 2 * M - name_w) / max(1, config.FASTEST_COUNT)
+    for dest, trips in fast:
+        cy = y + FASTEST_ROW_H // 2
+        d.text((M, cy), _fit(d, dest, font(36, True), name_w - 20), font=font(36, True), fill=BLACK, anchor="lm")
+        if not trips:
+            d.text((M + name_w, cy), "Ingen resa hittad", font=font(30), fill=MID, anchor="lm")
+        for i, t in enumerate(trips):
+            x = M + name_w + i * col_w
+            for n, line in enumerate(t.lines):
+                x = _badge(d, x, cy, line) + 6
+            x += 8
+            mins = int((t.depart - now).total_seconds() // 60)
+            when = "går nu" if mins <= 0 else f"går {t.depart:%H:%M} · om {mins} min"
+            d.text((x, cy - 15), f"framme {t.arrive:%H:%M}", font=font(34, True), fill=BLACK, anchor="lm")
+            d.text((x, cy + 22), when, font=font(24), fill=MID, anchor="lm")
+        y += FASTEST_ROW_H
+        d.line([(M, y), (config.WIDTH - M, y)], fill=LIGHT, width=1)
+    return y + 10
+
+
 def render_png(mode="alla"):
     now = datetime.now(config.TZ)
     deps, deps_err = _safe(lambda: vasttrafik.fetch(mode))
     wx, wx_err = _safe(weather.fetch)
     lst, lst_err = _safe(keep.fetch)
+    fast, fast_err = _safe(journeys.fetch) if mode == "jobb" else ([], None)
 
     img = Image.new("L", (config.WIDTH, config.HEIGHT), WHITE)
     d = ImageDraw.Draw(img)
@@ -252,8 +293,11 @@ def render_png(mode="alla"):
     # Departures get what is left after reserving room for weather and the list.
     n_items = len(lst[1]) if lst else 0
     list_rows = min(5, max(1, (n_items + 1) // 2))  # two columns, at most 5 rows reserved
-    dep_max_y = config.HEIGHT - 30 - WEATHER_H - (70 + list_rows * 62)
+    fast_h = _fastest_height(fast) if not fast_err else 130
+    dep_max_y = config.HEIGHT - 30 - WEATHER_H - (70 + list_rows * 62) - fast_h
     y = _draw_departures(d, y, deps, deps_err, now, max_y=dep_max_y, mode=mode) + 16
+    if fast or fast_err:
+        y = _draw_fastest(d, y, fast, fast_err, now) + 16
     y = _draw_weather(d, y, wx, wx_err) + 16
     _draw_list(d, y, lst, lst_err, max_y=config.HEIGHT - 30)
 

@@ -83,6 +83,10 @@ def _parse_connections(spec):
 VT_CONNECTIONS = _parse_connections(_env("VT_CONNECTIONS", "X2=Linnéplatsen:25@Balltorp:4"))
 VT_CHANGE_MINUTES = int(_env("VT_CHANGE_MINUTES", "1"))
 
+# "Snabbast till": destinations shown in the work view (journey planner, arrives first)
+FASTEST_TO = [x.strip() for x in _env("FASTEST_TO", "Brunnsparken,Drottningtorget").split(",") if x.strip()]
+FASTEST_COUNT = int(_env("FASTEST_COUNT", "2"))
+
 # "alla" mode: transport modes to include (tram,bus,ferry,train). Empty = all.
 VT_MODES = [m.strip().lower() for m in _env("VT_MODES").split(",") if m.strip()]
 # "alla" mode: only these lines (both directions). Empty = every line.
