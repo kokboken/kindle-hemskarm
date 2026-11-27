@@ -352,7 +352,7 @@ def _render_night(now):
 
 
 SHORT_DAYS = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"]
-WEEK_COL_W = (1236 - 2 * M) / 5
+WEEK_COL_W = (1236 - 2 * M) / 7
 _measure = ImageDraw.Draw(Image.new("L", (1, 1)))
 
 
@@ -380,8 +380,8 @@ def _week_layout(evs, per_day):
     out = []
     for e in evs[:per_day]:
         when = "Heldag" if e.all_day else f"{e.start:%H:%M}"
-        lines = _wrap2(e.title, font(25), inner)
-        out.append((e, when, lines, 26 + 29 * len(lines) + 8))
+        lines = _wrap2(e.title, font(23), inner)
+        out.append((e, when, lines, 26 + 27 * len(lines) + 8))
     return out
 
 
@@ -395,7 +395,7 @@ def _week_height(days, err, per_day):
 
 
 def _draw_week(d, y, days, err, now, per_day):
-    """Mon–Fri in five columns, today highlighted, past days grey."""
+    """Mon–Sun in seven columns, today highlighted, past days grey."""
     week_no = days[0][0].isocalendar()[1] if days else now.isocalendar()[1]
     top = y
     y = _section_title(d, y, f"Veckan · v.{week_no}")
@@ -403,25 +403,25 @@ def _draw_week(d, y, days, err, now, per_day):
         return _error(d, y, err)
     for i, (day, evs) in enumerate(days):
         x = M + i * WEEK_COL_W
-        inner = WEEK_COL_W - 14
+        inner = WEEK_COL_W - 10
         label = f"{SHORT_DAYS[day.weekday()]} {day.day}"
         past = day < now.date()
         if day == now.date():
             d.rounded_rectangle([x, y, x + inner, y + 40], radius=8, fill=BLACK)
-            d.text((x + 10, y + 20), label, font=font(28, True), fill=WHITE, anchor="lm")
+            d.text((x + 8, y + 20), label, font=font(26, True), fill=WHITE, anchor="lm")
         else:
-            d.text((x + 10, y + 20), label, font=font(28, True), fill=MID if past else BLACK, anchor="lm")
+            d.text((x + 8, y + 20), label, font=font(26, True), fill=MID if past else BLACK, anchor="lm")
         ey = y + 50
         if not evs:
-            d.text((x + 10, ey + 14), "–", font=font(26), fill=LIGHT, anchor="lm")
+            d.text((x + 8, ey + 14), "–", font=font(26), fill=LIGHT, anchor="lm")
         for e, when, lines, h in _week_layout(evs, per_day):
             done = past or (not e.all_day and (e.end or e.start) < now)
-            d.text((x + 10, ey + 12), when, font=font(22, True), fill=MID if done else DARK, anchor="lm")
+            d.text((x + 8, ey + 12), when, font=font(22, True), fill=MID if done else DARK, anchor="lm")
             for n, line in enumerate(lines):
-                d.text((x + 10, ey + 40 + n * 29), line, font=font(25), fill=MID if done else BLACK, anchor="lm")
+                d.text((x + 8, ey + 39 + n * 27), line, font=font(23), fill=MID if done else BLACK, anchor="lm")
             ey += h
         if len(evs) > per_day:
-            d.text((x + 10, ey + 12), f"+{len(evs) - per_day} till", font=font(22), fill=MID, anchor="lm")
+            d.text((x + 8, ey + 12), f"+{len(evs) - per_day} till", font=font(22), fill=MID, anchor="lm")
     return top + _week_height(days, None, per_day)
 
 

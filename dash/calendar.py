@@ -81,7 +81,7 @@ def fetch():
 
 
 def week(now=None):
-    """Monday–Friday of this week (next week on Saturday/Sunday): [(date, [Event, ...]), ...]."""
+    """Monday–Sunday of this week: [(date, [Event, ...]), ...]."""
     from icalendar import Calendar
 
     now = now or datetime.now(config.TZ)
@@ -90,10 +90,8 @@ def week(now=None):
     fetch()  # refreshes the cached calendar file
     cal = Calendar.from_ical(_cache["raw"])
     monday = now.date() - timedelta(days=now.weekday())
-    if now.weekday() >= 5:
-        monday += timedelta(days=7)
     days = []
-    for i in range(5):
+    for i in range(7):
         day = monday + timedelta(days=i)
         start = datetime.combine(day, datetime.min.time(), config.TZ)
         evs = _events_between(cal, start, start + timedelta(days=1))
