@@ -189,6 +189,7 @@ def status():
         "vasttrafik": vasttrafik.configured(),
         "keep": keep_mod.configured(),
         "kalender": calendar.configured(),
+        "jobbresor": os.environ.get("VT_WORK", "(standard i koden)"),
         "kalender_lank_borjar_med": (config.ICAL_URL[:10] + "…") if config.ICAL_URL else "",
     }
     try:

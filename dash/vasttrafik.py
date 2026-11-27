@@ -106,12 +106,37 @@ def _fetch_departures(gid):
         raise
 
 
-def _work_match(name, direction):
-    """Return the person's name if this line/direction is one of the work routes, else None."""
-    for line, dir_part, person in config.VT_WORK:
-        if line.lower() == name.lower() and (not dir_part or dir_part in direction.lower()):
-            return person or ""
+def _work_match(name, direction, journey=None, when=None, passing=None):
+    """Return the person's name if this departure is one of the work routes, else None.
+
+    passing: {via stop: {journey gid: time there}} – a route with a via stop only matches
+    trips that reach that stop after leaving ours."""
+    for line, dir_part, person, via in config.VT_WORK:
+        if line.lower() != name.lower():
+            continue
+        if dir_part and dir_part not in direction.lower():
+            continue
+        if via:
+            later = (passing or {}).get(via, {}).get(journey)
+            if journey is not None and passing is not None and not (later and when and later > when):
+                continue
+        return person or ""
     return None
+
+
+def _via_passing():
+    """{via stop: {journey gid: time}} for every work route that uses a via stop."""
+    out = {}
+    for _, _, _, via in config.VT_WORK:
+        if via and via not in out:
+            data = _departures(_resolve_stop(via))
+            out[via] = {}
+            for d in data.get("results") or []:
+                sj = d.get("serviceJourney") or {}
+                t = d.get("estimatedOtherwisePlannedTime") or d.get("estimatedTime") or d.get("plannedTime")
+                if sj.get("gid") and t:
+                    out[via][sj["gid"]] = _parse_time(t)
+    return out
 
 
 def fetch(mode="alla"):
@@ -124,6 +149,8 @@ def fetch(mode="alla"):
     gid = _resolve_stop()
     data = _departures(gid)
     groups = {}
+    dirs = {}
+    passing = _via_passing() if mode == "jobb" else None
     for d in data.get("results") or []:
         sj = d.get("serviceJourney") or {}
         line = sj.get("line") or {}
@@ -132,7 +159,8 @@ def fetch(mode="alla"):
         direction = (sj.get("direction") or "").split(", Påstigning")[0]
         label = ""
         if mode == "jobb":
-            label = _work_match(name, direction)
+            t0 = d.get("estimatedOtherwisePlannedTime") or d.get("estimatedTime") or d.get("plannedTime")
+            label = _work_match(name, direction, sj.get("gid"), _parse_time(t0) if t0 else None, passing)
             if label is None:
                 continue
         else:
@@ -145,8 +173,14 @@ def fetch(mode="alla"):
         t = d.get("estimatedOtherwisePlannedTime") or d.get("estimatedTime") or d.get("plannedTime")
         if not t:
             continue
-        g = groups.setdefault((name, direction), LineDepartures(name, direction, tmode, label=label))
+        key = (name, label) if mode == "jobb" else (name, direction)  # work routes: one row whatever the end stop
+        g = groups.setdefault(key, LineDepartures(name, direction, tmode, label=label))
+        if mode == "jobb":
+            dirs.setdefault(key, {})
+            dirs[key][direction] = dirs[key].get(direction, 0) + 1
         g.times.append((_parse_time(t), bool(d.get("isCancelled")), sj.get("gid")))
+    for key, counts in dirs.items():  # "Billdal / Skintebo", most common first
+        groups[key].direction = " / ".join(sorted(counts, key=lambda k: -counts[k]))
     out = _finish(list(groups.values()), mode)
     if mode == "jobb":
         for g in out:

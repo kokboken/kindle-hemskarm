@@ -25,15 +25,20 @@ def _env(name, default=""):
 
 
 def _parse_work(spec):
-    """'X2:Victor, 1@Östra:Lovisa' -> [(line, direction_contains, name), ...]"""
+    """'X2>Linnéplatsen:Victor, 1@Östra:Lovisa' -> [(line, direction_contains, name, via_stop), ...]
+
+    @text  = the end stop must contain text
+    >Stop  = the trip must pass Stop after ours (any end stop) – catches short turns like Skintebo/Marklandsgatan
+    """
     out = []
     for part in spec.split(","):
         part = part.strip()
         if not part:
             continue
         part, _, name = part.partition(":")
+        part, _, via = part.partition(">")
         line, _, direction = part.partition("@")
-        out.append((line.strip(), direction.strip().lower(), name.strip()))
+        out.append((line.strip(), direction.strip().lower(), name.strip(), via.strip()))
     return out
 
 
@@ -57,7 +62,7 @@ VT_STOP_GID = _env("VT_STOP_GID")  # optional, looked up from VT_STOP_NAME if em
 #   "alla" – every departure, soonest first
 # VT_WORK format: LINE[@direction contains][:Name], comma separated.
 #   "X2:Victor,1:Lovisa"  or  "X2@Centrum:Victor,1@Östra:Lovisa"
-VT_WORK = _parse_work(_env("VT_WORK", "X2@Billdal:Victor,1@Östra:Lovisa"))
+VT_WORK = _parse_work(_env("VT_WORK", "X2>Linnéplatsen:Victor,1@Östra:Lovisa"))
 DEFAULT_MODE = _env("DEFAULT_MODE", "jobb")
 VT_WORK_TIMES = int(_env("VT_WORK_TIMES", "4"))
 
