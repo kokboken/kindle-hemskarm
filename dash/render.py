@@ -317,6 +317,37 @@ def _draw_note(d, y, lines):
     return y + h
 
 
+def _note_lines(d, note):
+    """Wrap the note into at most 3 lines that fit inside the box."""
+    f = font(38, True)
+    max_w = config.WIDTH - 2 * M - 48
+    lines = []
+    for para in [clean(x) for x in note.splitlines()] or [clean(note)]:
+        words, cur = para.split(), ""
+        for w in words:
+            test = f"{cur} {w}".strip()
+            if _w(d, test, f) <= max_w:
+                cur = test
+            else:
+                if cur:
+                    lines.append(cur)
+                cur = w
+        if cur:
+            lines.append(cur)
+    if len(lines) > 3:
+        lines = lines[:3]
+        lines[2] = _fit(d, lines[2] + " …", f, max_w)
+    return lines
+
+
+def _draw_note(d, y, lines):
+    h = 28 + 50 * len(lines)
+    d.rounded_rectangle([M, y, config.WIDTH - M, y + h], radius=14, outline=BLACK, width=4)
+    for i, line in enumerate(lines):
+        d.text((M + 24, y + 14 + i * 50), line, font=font(38, True), fill=BLACK)
+    return y + h
+
+
 CAL_ROW_H = 54
 
 
@@ -378,6 +409,80 @@ def _render_night(now):
     return buf.getvalue()
 
 
+SHORT_DAYS = ["Mån", "Tis", "Ons", "Tor", "Fre", "Lör", "Sön"]
+WEEK_COL_W = (1236 - 2 * M) / 5
+_measure = ImageDraw.Draw(Image.new("L", (1, 1)))
+
+
+def _wrap2(text, f, max_w):
+    """Up to two lines; the second is shortened with … if needed."""
+    words, lines, cur = clean(text).split(), [], ""
+    for w in words:
+        test = f"{cur} {w}".strip()
+        if _w(_measure, test, f) <= max_w or not cur:
+            cur = test
+        else:
+            lines.append(cur)
+            cur = w
+            if len(lines) == 1:
+                continue
+    lines.append(cur)
+    if len(lines) > 2:
+        lines = [lines[0], " ".join(lines[1:])]
+    return [_fit(_measure, line, f, max_w) for line in lines[:2]]
+
+
+def _week_layout(evs, per_day):
+    """[(when, [title lines], height)] for one day's column."""
+    inner = WEEK_COL_W - 28
+    out = []
+    for e in evs[:per_day]:
+        when = "Heldag" if e.all_day else f"{e.start:%H:%M}"
+        lines = _wrap2(e.title, font(25), inner)
+        out.append((e, when, lines, 26 + 29 * len(lines) + 8))
+    return out
+
+
+def _week_height(days, err, per_day):
+    if err:
+        return 130
+    if not days:
+        return 0
+    cols = [sum(h for *_, h in _week_layout(evs, per_day)) + (30 if len(evs) > per_day else 0) for _, evs in days]
+    return 70 + 50 + max(max(cols), 34) + 6
+
+
+def _draw_week(d, y, days, err, now, per_day):
+    """Mon–Fri in five columns, today highlighted, past days grey."""
+    week_no = days[0][0].isocalendar()[1] if days else now.isocalendar()[1]
+    top = y
+    y = _section_title(d, y, f"Veckan · v.{week_no}")
+    if err:
+        return _error(d, y, err)
+    for i, (day, evs) in enumerate(days):
+        x = M + i * WEEK_COL_W
+        inner = WEEK_COL_W - 14
+        label = f"{SHORT_DAYS[day.weekday()]} {day.day}"
+        past = day < now.date()
+        if day == now.date():
+            d.rounded_rectangle([x, y, x + inner, y + 40], radius=8, fill=BLACK)
+            d.text((x + 10, y + 20), label, font=font(28, True), fill=WHITE, anchor="lm")
+        else:
+            d.text((x + 10, y + 20), label, font=font(28, True), fill=MID if past else BLACK, anchor="lm")
+        ey = y + 50
+        if not evs:
+            d.text((x + 10, ey + 14), "–", font=font(26), fill=LIGHT, anchor="lm")
+        for e, when, lines, h in _week_layout(evs, per_day):
+            done = past or (not e.all_day and (e.end or e.start) < now)
+            d.text((x + 10, ey + 12), when, font=font(22, True), fill=MID if done else DARK, anchor="lm")
+            for n, line in enumerate(lines):
+                d.text((x + 10, ey + 40 + n * 29), line, font=font(25), fill=MID if done else BLACK, anchor="lm")
+            ey += h
+        if len(evs) > per_day:
+            d.text((x + 10, ey + 12), f"+{len(evs) - per_day} till", font=font(22), fill=MID, anchor="lm")
+    return top + _week_height(days, None, per_day)
+
+
 def render_png(mode="alla", now=None):
     now = now or datetime.now(config.TZ)
     if config.is_night(now.hour):
@@ -387,8 +492,9 @@ def render_png(mode="alla", now=None):
     lst, lst_err = _safe(keep.fetch)
     fast, fast_err = _safe(journeys.fetch) if mode == "jobb" else ([], None)
     note, _ = _safe(keep.get_note)
-    cal, cal_err = _safe(calendar.fetch)
-    cal = cal or []
+    week, week_err = _safe(lambda: calendar.week(now))
+    week = week or []
+    per_day = config.CAL_MAX_EVENTS
 
     img = Image.new("L", (config.WIDTH, config.HEIGHT), WHITE)
     d = ImageDraw.Draw(img)
@@ -408,34 +514,43 @@ def render_png(mode="alla", now=None):
         y = _draw_note(d, y, note_lines) + 20
         note_h = y - 190
 
-    # Space budget. Everything below the departures needs room; when the work view is too full,
-    # first drop the hourly weather strip, then show fewer calendar events.
+    # Space budget. The week calendar sits at the bottom; the list fills the gap above it.
+    # When the work view is too full: drop the hourly weather strip, shrink the list, then fewer events per day.
     n_items = len(lst[1]) if lst else 0
     list_rows = min(5, max(1, (n_items + 1) // 2))  # two columns, at most 5 rows reserved
     list_h = 70 + list_rows * 62
     fast_h = (_fastest_height(fast) + 16 if fast else 0) if not fast_err else 146
     weather_h = WEATHER_H
     compact = False
+
+    def week_h():
+        return _week_height(week, week_err, per_day) + 16 if (week or week_err) else 0
+
     if mode == "jobb" and deps:
         dep_h = 70 + sum(136 if g.connections else 108 for g in deps) + 26
+
         def need():
-            return y + dep_h + fast_h + (_cal_height(cal, cal_err) + 16 if (cal or cal_err) else 0) + weather_h + list_h + 30
+            return y + dep_h + fast_h + weather_h + list_h + week_h() + 30
+
         if need() > config.HEIGHT:
             compact, weather_h = True, WEATHER_H - 120
-        while need() > config.HEIGHT and len(cal) > 1:
-            cal = cal[: min(len(cal), config.CAL_MAX_EVENTS) - 1]
-        while need() > config.HEIGHT and list_rows > 2:  # the list shows "+N till" for the rest
-            list_rows -= 1
-            list_h = 70 + list_rows * 62
-    cal_h = _cal_height(cal, cal_err) + 16 if (cal or cal_err) else 0
+        # Shrink list and calendar in turns so neither disappears ("+N till" shows the rest).
+        for min_rows, min_events in ((2, 2), (1, 2), (1, 1)):
+            while need() > config.HEIGHT and list_rows > min_rows:
+                list_rows -= 1
+                list_h = 70 + list_rows * 62
+            while need() > config.HEIGHT and per_day > min_events:
+                per_day -= 1
+    cal_h = week_h()
     dep_max_y = config.HEIGHT - 30 - weather_h - list_h - fast_h - cal_h
     y = _draw_departures(d, y, deps, deps_err, now, max_y=dep_max_y, mode=mode) + 16
     if fast or fast_err:
         y = _draw_fastest(d, y, fast, fast_err, now) + 16
-    if cal or cal_err:
-        y = _draw_calendar(d, y, cal, cal_err) + 16
     y = _draw_weather(d, y, wx, wx_err, compact=compact) + 16
-    _draw_list(d, y, lst, lst_err, max_y=config.HEIGHT - 30)
+    list_bottom = config.HEIGHT - 30 - cal_h
+    _draw_list(d, y, lst, lst_err, max_y=list_bottom)
+    if week or week_err:
+        _draw_week(d, list_bottom + 16, week, week_err, now, per_day)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)

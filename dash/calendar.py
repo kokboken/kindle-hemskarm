@@ -78,3 +78,25 @@ def fetch():
         _cache["day"] = now.date()
         _cache["events"] = True
     return parse(_cache["raw"], now)
+
+
+def week(now=None):
+    """Monday–Friday of this week (next week on Saturday/Sunday): [(date, [Event, ...]), ...]."""
+    from icalendar import Calendar
+
+    now = now or datetime.now(config.TZ)
+    if not configured():
+        return []
+    fetch()  # refreshes the cached calendar file
+    cal = Calendar.from_ical(_cache["raw"])
+    monday = now.date() - timedelta(days=now.weekday())
+    if now.weekday() >= 5:
+        monday += timedelta(days=7)
+    days = []
+    for i in range(5):
+        day = monday + timedelta(days=i)
+        start = datetime.combine(day, datetime.min.time(), config.TZ)
+        evs = _events_between(cal, start, start + timedelta(days=1))
+        evs.sort(key=lambda e: (not e.all_day, e.start or start))
+        days.append((day, evs))
+    return days
