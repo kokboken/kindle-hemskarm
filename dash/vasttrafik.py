@@ -179,8 +179,9 @@ def fetch(mode="alla"):
             dirs.setdefault(key, {})
             dirs[key][direction] = dirs[key].get(direction, 0) + 1
         g.times.append((_parse_time(t), bool(d.get("isCancelled")), sj.get("gid")))
-    for key, counts in dirs.items():  # "Billdal / Skintebo", most common first
-        groups[key].direction = " / ".join(sorted(counts, key=lambda k: -counts[k]))
+    for key, counts in dirs.items():  # most common end stop, "+ m.fl." when trips end at several
+        ranked = sorted(counts, key=lambda k: -counts[k])
+        groups[key].direction = ranked[0] + (" m.fl." if len(ranked) > 1 else "")
     out = _finish(list(groups.values()), mode)
     if mode == "jobb":
         for g in out:
