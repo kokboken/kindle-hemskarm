@@ -270,12 +270,44 @@ def _draw_fastest(d, y, fast, err, now):
     return y + 10
 
 
+def _note_lines(d, note):
+    """Wrap the note into at most 3 lines that fit inside the box."""
+    f = font(38, True)
+    max_w = config.WIDTH - 2 * M - 48
+    lines = []
+    for para in note.splitlines() or [note]:
+        words, cur = para.split(), ""
+        for w in words:
+            test = f"{cur} {w}".strip()
+            if _w(d, test, f) <= max_w:
+                cur = test
+            else:
+                if cur:
+                    lines.append(cur)
+                cur = w
+        if cur:
+            lines.append(cur)
+    if len(lines) > 3:
+        lines = lines[:3]
+        lines[2] = _fit(d, lines[2] + " …", f, max_w)
+    return lines
+
+
+def _draw_note(d, y, lines):
+    h = 28 + 50 * len(lines)
+    d.rounded_rectangle([M, y, config.WIDTH - M, y + h], radius=14, outline=BLACK, width=4)
+    for i, line in enumerate(lines):
+        d.text((M + 24, y + 14 + i * 50), line, font=font(38, True), fill=BLACK)
+    return y + h
+
+
 def render_png(mode="alla"):
     now = datetime.now(config.TZ)
     deps, deps_err = _safe(lambda: vasttrafik.fetch(mode))
     wx, wx_err = _safe(weather.fetch)
     lst, lst_err = _safe(keep.fetch)
     fast, fast_err = _safe(journeys.fetch) if mode == "jobb" else ([], None)
+    note, _ = _safe(keep.get_note)
 
     img = Image.new("L", (config.WIDTH, config.HEIGHT), WHITE)
     d = ImageDraw.Draw(img)
@@ -289,12 +321,17 @@ def render_png(mode="alla"):
     upd = f"Uppdaterad {now:%H:%M:%S}"
     d.text((config.WIDTH - M - _w(d, upd, font(26)), 140), upd, font=font(26), fill=MID)
     y = 190
+    note_h = 0
+    if note:
+        note_lines = _note_lines(d, note)
+        y = _draw_note(d, y, note_lines) + 20
+        note_h = y - 190
 
     # Departures get what is left after reserving room for weather and the list.
     n_items = len(lst[1]) if lst else 0
     list_rows = min(5, max(1, (n_items + 1) // 2))  # two columns, at most 5 rows reserved
     fast_h = _fastest_height(fast) if not fast_err else 130
-    dep_max_y = config.HEIGHT - 30 - WEATHER_H - (70 + list_rows * 62) - fast_h
+    dep_max_y = config.HEIGHT - 30 - WEATHER_H - (70 + list_rows * 62) - fast_h - note_h
     y = _draw_departures(d, y, deps, deps_err, now, max_y=dep_max_y, mode=mode) + 16
     if fast or fast_err:
         y = _draw_fastest(d, y, fast, fast_err, now) + 16

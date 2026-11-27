@@ -14,7 +14,9 @@ from urllib.parse import quote
 
 from flask import Flask, Response, abort, redirect, request
 
-from dash import config
+from html import escape
+
+from dash import config, keep
 from dash.render import render_png
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -89,11 +91,26 @@ def set_mode(mode):
     return redirect("/" + _key_qs())
 
 
+@app.post("/note")
+def save_note():
+    _check_key()
+    text = "" if "clear" in request.form else request.form.get("text", "")
+    keep.set_note(text)
+    with _lock:
+        _cache.clear()  # show the new note right away
+    return redirect("/" + _key_qs())
+
+
 @app.get("/")
 def phone_page():
     _check_key()
     qs = _key_qs()
     current = _state["mode"]
+    try:
+        note = keep.get_note()
+        note_err = ""
+    except Exception as e:  # Keep down – the rest of the page still works
+        note, note_err = "", f"<p>Kunde inte läsa lappen: {escape(str(e))}</p>"
     buttons = "".join(
         f"<a class='btn{' on' if m == current else ''}' href='/mode/{m}{qs}'>{label}</a>"
         for m, label in MODES.items()
@@ -112,18 +129,35 @@ def phone_page():
   .btn.on {{ background:#111; color:#fff; }}
   img {{ width:100%; border-radius:8px; background:#fff; box-shadow:0 1px 4px #0003; }}
   p {{ color:#666; font-size:14px; }}
+  form {{ margin:0 0 16px; }}
+  textarea {{ width:100%; box-sizing:border-box; min-height:84px; font:17px system-ui,sans-serif;
+              padding:10px; border-radius:10px; border:2px solid #111; }}
+  form .row {{ margin:8px 0 0; }}
+  button {{ flex:1; padding:12px 8px; border-radius:10px; border:2px solid #111; font:600 16px system-ui;
+            background:#111; color:#fff; }}
+  button.sec {{ background:#fff; color:#111; }}
+  h2 {{ font-size:16px; margin:18px 0 6px; }}
   @media (prefers-color-scheme: dark) {{
     body {{ background:#1b1b1b; color:#eee; }}
     .btn {{ background:#2a2a2a; color:#eee; border-color:#eee; }}
     .btn.on {{ background:#eee; color:#111; }}
     p {{ color:#aaa; }}
+    textarea {{ background:#2a2a2a; color:#eee; border-color:#eee; }}
+    button {{ background:#eee; color:#111; border-color:#eee; }}
+    button.sec {{ background:#2a2a2a; color:#eee; }}
   }}
 </style>
 <main>
   <h1>Hemskärmen</h1>
   <div class=row>{buttons}</div>
+  <h2>Lapp på skärmen</h2>
+  {note_err}
+  <form method=post action='/note{qs}'>
+    <textarea name=text maxlength=300 placeholder='T.ex. Middag hos mamma 18'>{escape(note)}</textarea>
+    <div class=row><button>Spara lapp</button><button class=sec name=clear value=1>Ta bort</button></div>
+  </form>
   <img src='/dash.png{qs}' alt='Det som visas på Kindlen'>
-  <p>Kindlen visar det nya läget nästa gång den uppdaterar (inom några minuter).</p>
+  <p>Kindlen visar ändringar vid nästa minutskifte.</p>
 </main></html>"""
 
 
