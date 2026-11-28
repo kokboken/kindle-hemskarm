@@ -20,7 +20,7 @@ services:
       - key: VT_STOP_NAME
         value: Järntorget
       - key: VT_WORK
-        value: "X2>Linnéplatsen:Victor,1@Östra:Lovisa"
+        value: "X2>Linnéplatsen:Victor,1>Svingeln:Lovisa"
       - key: DEFAULT_MODE
         value: jobb
       - key: KEEP_EMAIL

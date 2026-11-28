@@ -86,17 +86,17 @@ _dep_cache = {}  # gid -> (data, fetched_at); both modes share one fetch
 DEP_CACHE_SECONDS = 30
 
 
-def _departures(gid):
+def _departures(gid, per_line=5):
     hit = _dep_cache.get(gid)
     if hit and time.time() - hit[1] < DEP_CACHE_SECONDS:
         return hit[0]
-    data = _fetch_departures(gid)
+    data = _fetch_departures(gid, per_line)
     _dep_cache[gid] = (data, time.time())
     return data
 
 
-def _fetch_departures(gid):
-    params = {"timeSpanInMinutes": 120, "limit": 200, "maxDeparturesPerLineAndDirection": 5}
+def _fetch_departures(gid, per_line=5):
+    params = {"timeSpanInMinutes": 120, "limit": 200, "maxDeparturesPerLineAndDirection": per_line}
     try:
         return _get(f"/stop-areas/{gid}/departures", params)
     except requests.HTTPError as e:
@@ -129,7 +129,9 @@ def _via_passing():
     out = {}
     for _, _, _, via in config.VT_WORK:
         if via and via not in out:
-            data = _departures(_resolve_stop(via))
+            # More per line than at our stop: the via stop's list starts "now", so the
+            # trips we show leave there later and would otherwise fall off the end.
+            data = _departures(_resolve_stop(via), per_line=10)
             out[via] = {}
             for d in data.get("results") or []:
                 sj = d.get("serviceJourney") or {}
